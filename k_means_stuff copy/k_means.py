@@ -37,8 +37,8 @@ def color_columns(path):
     color_dict = dict()
     with h5py.File(path, 'a') as df:
         # what is the actual range for the first h5? How to generalize to the other h5 files?
-        for i in df['images'].values():
-            img = df[f'images/{i}'][:]
+        for i in df['images'].keys():
+            img = np.array(df[f'images/{i}'])
             img_RGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             # Reshape image to an Mx3 array
             img_data = img_RGB.reshape(-1, 3)
@@ -75,8 +75,8 @@ def composition_columns(path):
     # Load image and convert to grayscale
     with h5py.File(path, 'a') as df:
         # what is the actual range for the first h5? How to generalize to the other h5 files?
-        for i in range(3):
-            img = df[f'images/{i}'][:]
+        for i in df['images'].keys():
+            img = np.array(df[f'images/{i}'])
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
             # Apply edge detection (Canny) to find contours
@@ -131,10 +131,10 @@ def color_similarity(image, data):
     with h5py.File(color_data_path, 'r') as df, h5py.File(color_image_path, 'r') as color:
 
         color_data = [
-            df[f'metadata/{group}/color_clusters'].values()
+            df[f'metadata/{group}/color_clusters']
             for group in df['metadata']
         ]
-        image_clusters = color['metadata/1/color_clusters'].values()
+        image_clusters = color['metadata/0/color_clusters']
 
         distances = np.empty((5,0))
         for i in range(5):
@@ -158,17 +158,17 @@ def composition_similarity(image, data):
     with h5py.File(comp_data_path, 'r') as df, h5py.File(comp_image_path, 'r') as color:
 
         comp_clusters = [
-            df[f'metadata/{group}'].attrs['comp_clusters']
+            df[f'metadata/{group}/comp_clusters']
             for group in df['metadata']
         ]
 
         comp_compactness = [
-            df[f'metadata/{group}'].attrs['comp_compactness']
+            df[f'metadata/{group}/comp_compactness']
             for group in df['metadata']
         ]
 
-        image_clusters = color[f'metadata/1'].attrs['comp_clusters']
-        image_compactness = color[f'metadata/1'].attrs['comp_compactness']
+        image_clusters = color[f'metadata/0/comp_clusters']
+        image_compactness = color[f'metadata/0/comp_compactness']
 
         comps = np.vstack(comp_compactness)
         comp_distance = np.abs(comps - image_compactness)
@@ -192,7 +192,7 @@ def similar_art(image, weight, data):
     # takes the datatset with the two new color_similarity & composition_similarity columns and computes the
     # overall_weighted average of these columns. It then returns the image with the smallest overall_weighted 
     # average. So it returns three images and all of the metadata associated to these images
-    img = np.resize(image, (200,200))
+    img = cv2.resize(image, (200, 200), interpolation=cv2.INTER_AREA)
     img_file = "/Users/greysonmeyer/Desktop/Erdos_Work/k_means_stuff/input_image.h5"
     with h5py.File(img_file, 'w') as file:
         file.create_dataset("images/0", data=img, compression="gzip", compression_opts=1)
@@ -201,6 +201,8 @@ def similar_art(image, weight, data):
     with h5py.File(img_file, 'r') as h5file:
         print("Should see images")
         print_structure('/', h5file)
+        # plt.imshow(h5file['images/0'])
+        # plt.show()
 
     color_match_index, color_averages = color_similarity(img_file, data)
     comp_match_index, comp_averages = composition_similarity(img_file, data)
@@ -208,18 +210,15 @@ def similar_art(image, weight, data):
     overall_match_index = np.argmin(overall_avgs)
 
     with h5py.File(data, 'r') as df:
-        img_color = df[f'images/{color_match_index}'].values()[0]
-        img_comp = df[f'images/{comp_match_index}'].values()[0]
-        img_overall = df[f'images/{overall_match_index}'].values()[0]
+        img_color = df[f'images/{color_match_index}'][:]
+        img_comp = df[f'images/{comp_match_index}'][:]
+        img_overall = df[f'images/{overall_match_index}'][:]
 
-        color_title = df[f'metadata/{color_match_index}/artwork_name'].values()[0], 
-        ' by ', df[f'metadata/{color_match_index}/artist_full_name'].values()[0]
+        color_title = str(df[f'metadata/{color_match_index}/artwork_name'][()].decode('utf-8')) + ' by ' + str(df[f'metadata/{color_match_index}/artist_full_name'][()].decode('utf-8'))
 
-        comp_title = df[f'metadata/{comp_match_index}/artwork_name'].values()[0], 
-        ' by ', df[f'metadata/{comp_match_index}/artist_full_name'].values()[0]
+        comp_title = df[f'metadata/{comp_match_index}/artwork_name'][()].decode('utf-8') + ' by ' + df[f'metadata/{comp_match_index}/artist_full_name'][()].decode('utf-8')
 
-        overall_title = df[f'metadata/{overall_match_index}/artwork_name'].values()[0], 
-        ' by ', df[f'metadata/{overall_match_index}/artist_full_name'].values()[0]
+        overall_title = df[f'metadata/{overall_match_index}/artwork_name'][()].decode('utf-8') + ' by ' + df[f'metadata/{overall_match_index}/artist_full_name'][()].decode('utf-8')
 
         # img_color = mpimg.imread('path/to/image1.jpg')  # Replace with your image paths
         # img2 = mpimg.imread('path/to/image2.jpg')  # Replace with your image paths
@@ -229,15 +228,15 @@ def similar_art(image, weight, data):
 
         axes[0].imshow(img_color)
         axes[0].set_title(color_title)
-        axes[0].axis('off')  # Hide axes
+        axes[0].axis('off')
 
         axes[1].imshow(img_comp)
         axes[1].set_title(comp_title)
         axes[1].axis('off')
 
         axes[2].imshow(img_overall)
-        axes[2].set_title(overall_title)  # Replace with your label
-        axes[2].axis('off')  # Hide axes
+        axes[2].set_title(overall_title)
+        axes[2].axis('off')
 
         # Show the plot
         plt.tight_layout()
@@ -247,8 +246,7 @@ def similar_art(image, weight, data):
     
 test_path = create_test_set(df_path)
 # with h5py.File(test_path, 'r') as h5file:
-#     print("HDF5 File Structure:")
-#     print_structure('/', h5file)
+#     print('namamanamananamana ', h5file[f'metadata/1/artist_full_name'][()].decode('utf-8'))
 test_image_path = "/Users/greysonmeyer/Downloads/greyson_klarwein_mj.png"
 test_image = cv2.imread(test_image_path)
 similar_art(test_image, 0.5, test_path)
