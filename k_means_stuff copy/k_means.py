@@ -102,7 +102,7 @@ def composition_columns(path):
                 K = len(contour_centers)
             else:
                 K = 5  # Choose number of clusters for forms
-            compactness, labels, centers = cv2.kmeans(contour_centers, K, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+            compactness, labels, centers = cv2.kmeans(contour_centers, K, None, criteria, 10, cv2.KMEANS_PP_CENTERS)
             sorted_centers = sorted(centers, key=lambda c: (c[1], c[0]), reverse=True)
             comp_dict[i] = [compactness, sorted_centers]
 
@@ -196,12 +196,12 @@ def composition_similarity(image, data):
             distances = np.hstack((distances, cluster_distance[:, np.newaxis])) 
 
         row_averages = np.mean(distances, axis=0)
-        distance_image_index = list(df['metadata'].keys())[np.argmin(row_averages)]
 
-        overall_comp_similarities = 0.5 * np.abs(comp_distance - row_averages)
-        winner_image_index = list(df['metadata'].keys())[np.argmin(overall_comp_similarities)]
+        # overall_comp_similarities = 0.5 * np.abs(comp_distance - row_averages)
+        winner_image_index = list(df['metadata'].keys())[np.argmin(row_averages)]
+        # winner_image_index = list(df['metadata'].keys())[np.argmin(overall_comp_similarities)]
 
-    return winner_image_index, overall_comp_similarities
+    return winner_image_index, row_averages # , overall_comp_similarities
 
 def similar_art(image, weight, data):
     # Start by resizing the image using Sun's code and put it in an h5file with one image group  
@@ -215,15 +215,13 @@ def similar_art(image, weight, data):
         file.create_dataset("images/0", data=img, compression="gzip", compression_opts=1)
         file.create_group("metadata/0") 
 
-    with h5py.File(data, 'r') as df:
-        starting_group_num = int(list(df['metadata'].keys())[0])
-
     color_match_index, color_averages = color_similarity(img_file, data)
     comp_match_index, comp_averages = composition_similarity(img_file, data)
     overall_avgs = weight * color_averages + (1 - weight) * comp_averages
-    overall_match_index = starting_group_num + np.argmin(overall_avgs)
 
     with h5py.File(data, 'r') as df:
+        overall_match_index = list(df['metadata'].keys())[np.argmin(overall_avgs)]
+        # overall_match_index = starting_group_num + np.argmin(overall_avgs)
         img_color = df[f'images/{color_match_index}'][:]
         img_comp = df[f'images/{comp_match_index}'][:]
         img_overall = df[f'images/{overall_match_index}'][:]
@@ -262,7 +260,7 @@ def similar_art(image, weight, data):
     
 test_path = create_test_set(df_path)
 
-test_image_path = "/Users/greysonmeyer/Desktop/identical_tester.png"
-test_image_wrong = cv2.imread(test_image_path)
-test_image = cv2.cvtColor(test_image_wrong, cv2.COLOR_BGR2RGB)
+test_image_path = '/Users/greysonmeyer/downloads/saved.png'
+test_image = cv2.imread(test_image_path)
+# test_image = cv2.cvtColor(test_image_wrong, cv2.COLOR_BGR2RGB)
 similar_art(test_image, 0.5, test_path)
