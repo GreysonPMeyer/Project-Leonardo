@@ -4,6 +4,12 @@ import numpy as np
 import random
 import helper_tools as ht
 from sklearn.metrics import silhouette_score
+import time
+import os
+
+SKIP_IMAGE_LIST = []
+
+logging = open('./kmeans_validation.log', 'a')
 
 @ht.timing
 def color_columns(h5_dict:dict, k:int, num_sample_img:int = 10):
@@ -18,6 +24,7 @@ def color_columns(h5_dict:dict, k:int, num_sample_img:int = 10):
     random.seed(369)
     sample_keys = random.sample(sorted(h5_dict.keys()), num_sample_img)
     for meta in sample_keys:
+        if meta in SKIP_IMAGE_LIST: continue
         # print(meta)
         img = h5_dict.get(meta).reshape((200,200,3))
         img_RGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -65,7 +72,7 @@ def composition_columns(h5_dict:dict, k:int, num_sample_img:int = 10):
     sample_keys = random.sample(sorted(h5_dict.keys()), num_sample_img)
         # what is the actual range for the first h5? How to generalize to the other h5 files?
     for meta in sample_keys:
-        # print(meta)
+        if meta in SKIP_IMAGE_LIST: continue
         img = h5_dict.get(meta).reshape((200,200,3))
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
@@ -90,22 +97,22 @@ def composition_columns(h5_dict:dict, k:int, num_sample_img:int = 10):
 
         # Define criteria and number of clusters (K)
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.2)
-        # if len(contour_centers) < 5:
-        #     K = len(contour_centers)
-        # else:
-        #     K = 5  # Choose number of clusters for forms
-        if contour_centers.shape[0] < k:
-            print(f'{meta} has less contours than number of clusters ({k}).')
-            compactness = np.NaN
-            sscore = np.NaN
+        if len(contour_centers) < k:
+            K = len(contour_centers) - 1
+            if K <= 0:
+                SKIP_IMAGE_LIST.append(meta)
+            else:
+                logging.write(f'{meta} has {len(contour_centers)} contours so k = {K}.')
+                compactness, labels, centers = cv2.kmeans(contour_centers, K, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+                SKIP_IMAGE_LIST.append(meta)
         else:
             compactness, labels, centers = cv2.kmeans(contour_centers, k, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
         # sorted_centers = sorted(centers, key=lambda c: (c[1], c[0]), reverse=True)
-            try:
-                sscore = silhouette_score(contour_centers, labels.ravel())
-            except:
-                print(f'{meta} composition k-means results in clusters containing one point.')
-                sscore = np.NaN
+        try:
+            sscore = silhouette_score(contour_centers, labels.ravel())
+        except:
+            logging.write(f'{meta} composition k-means results in clusters containing one point.')
+            sscore = np.NaN
         results_dict['compactness'].append(compactness)
         results_dict['metadata'].append(meta)
         results_dict['sil_score'].append(sscore)
@@ -131,26 +138,61 @@ def generate_validation_dfs(sample_file_list:list, k_range:list, num_sample_img:
     comp_results_df = pd.concat(comp_results_list, ignore_index=True)
 
     if save_files:
-        color_results_df.to_csv('./color_validation.csv')
-        comp_results_df.to_csv('./comp_validation.csv')
+        color_results_df.to_csv('./color_validation.csv', index=False)
+        comp_results_df.to_csv('./comp_validation.csv', index=False)
 
     return color_results_df, comp_results_df
 
 
 if __name__ == "__main__":
 
-    num_files = 72
-    random.seed(12345)
-    sample_files = random.sample(range(72), 10)
-    # Download by hand these h5 files from OneDrive
-    print(sample_files)
+    k_range = range(2,10)
 
-    color_df, comp_df = generate_validation_dfs(sample_files, range(2,6))
-    max_idx = color_df.groupby('metadata')['sil_score'].abs().idxmax()
+    if not (os.path.isfile('./color_validation.csv')) and not (os.path.isfile('./comp_validation.csv')):
+        num_files = 72
+        random.seed(12345)
+        sample_files = random.sample(range(72), 10)
+        # Download by hand these h5 files from OneDrive
+        print(sample_files)
+
+        ts = time.time()
+        color_df, comp_df = generate_validation_dfs(sample_files, k_range, num_sample_img=50)
+        te = time.time()
+        print(f'Generating validation datasets took {(ts-te)/60}min.')
+
+    else:
+        comp_df = pd.read_csv('./comp_validation.csv')
+        color_df = pd.read_csv('./color_validation.csv')
+        drop_col = 'Unnamed: 0'
+        if drop_col in color_df.columns:
+            color_df = color_df.drop(drop_col, axis=1)
+        if drop_col in comp_df.columns:
+            comp_df = comp_df.drop(drop_col, axis =1)
+
+    print(f'# of NaNs in color df \n{color_df.isna().sum()}.')
+    print(f'# of NaNs in comp df \n{comp_df.isna().sum()}.')
+
+    print(comp_df[comp_df['sil_score'].isna()])
+
+    for obj in comp_df.loc[comp_df['sil_score'].isna(), 'metadata'].unique():
+        if len(comp_df[comp_df['metadata']== obj]) == len(k_range):
+            comp_df = comp_df[comp_df['metadata']!= obj]
+            comp_df = pd.concat([comp_df, pd.DataFrame({'compactness':np.NaN,
+                                                        'metadata':obj,
+                                                        'clusters':0,
+                                                        'sil_score': np.inf}, index=[0])])
+
+    # Drop NaNs, since these instances can't be compared
+    comp_df.dropna(inplace=True, subset='sil_score')
+    color_df.dropna(inplace=True, subset='sil_score')
+
+    max_idx = color_df.groupby('metadata')['sil_score'].idxmax()
     color_max = color_df.loc[max_idx, ['metadata', 'clusters', 'sil_score']]
     color_max.to_csv('./color_max.csv')
 
-    max_idx = comp_df.groupby('metadata')['sil_score'].abs().idxmax()
+    max_idx = comp_df.groupby('metadata')['sil_score'].idxmax()
     comp_max = comp_df.loc[max_idx, ['metadata', 'clusters', 'sil_score']]
-    comp_max.to_csv('./comp_max.csv')
+    comp_max.to_csv('./comp_max.csv', index = True)
+
+
     pass
