@@ -6,6 +6,7 @@ import helper_tools as ht
 from sklearn.metrics import silhouette_score
 import time
 import os
+import pickle
 
 SKIP_IMAGE_LIST = []
 
@@ -18,7 +19,7 @@ def color_columns(h5_dict:dict, k:int, num_sample_img:int = 10):
     # color_dict = dict()
     results_dict = {'compactness':[], 
                     'metadata':[],
-                    'clusters':[k]*num_sample_img, 
+                    'clusters':[], 
                     'sil_score':[]}
 
     random.seed(369)
@@ -39,21 +40,12 @@ def color_columns(h5_dict:dict, k:int, num_sample_img:int = 10):
         compactness, labels, centers = cv2.kmeans(data=img_data.astype(np.float32), K=k, bestLabels=None, criteria=criteria, attempts=10, flags=cv2.KMEANS_RANDOM_CENTERS)
         # centers_sorted = sorted(centers, key=lambda x: np.linalg.norm(x))
         sscore = silhouette_score(img_data, labels.ravel())
+
         results_dict['compactness'].append(compactness)
         results_dict['metadata'].append(meta)
         results_dict['sil_score'].append(sscore)
-        # If there are less than k clusters, add extra white clusters
-        # if len(centers_sorted) < 5:
-        #     for l in range(5 - len(centers_sorted)):
-        #         centers_sorted.append(np.array([255, 255, 255]))
+        results_dict['clusters'].append(k)
 
-        # color_dict[i] = [compactness, centers_sorted]
-
-    # for j in color_dict.keys():
-    #     # df.create_dataset(f"metadata/{j}/color_compactness", data=color_dict[j][0])
-    #     df.create_dataset(f"metadata/{j}/color_clusters", data=color_dict[j][1])
-
-        # print("Should see color clusters!")
     return results_dict
 
 @ht.timing
@@ -65,7 +57,7 @@ def composition_columns(h5_dict:dict, k:int, num_sample_img:int = 10):
     # Load image and convert to grayscale
     results_dict = {'compactness':[], 
                     'metadata':[],
-                    'clusters':[k]*num_sample_img, 
+                    'clusters':[], 
                     'sil_score':[]}
 
     random.seed(369)
@@ -102,7 +94,7 @@ def composition_columns(h5_dict:dict, k:int, num_sample_img:int = 10):
             if K <= 0:
                 SKIP_IMAGE_LIST.append(meta)
             else:
-                logging.write(f'{meta} has {len(contour_centers)} contours so k = {K}.')
+                logging.write(f'{meta} has {len(contour_centers)} contours so k = {K}.\n')
                 compactness, labels, centers = cv2.kmeans(contour_centers, K, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
                 SKIP_IMAGE_LIST.append(meta)
         else:
@@ -111,28 +103,43 @@ def composition_columns(h5_dict:dict, k:int, num_sample_img:int = 10):
         try:
             sscore = silhouette_score(contour_centers, labels.ravel())
         except:
-            logging.write(f'{meta} composition k-means results in clusters containing one point.')
+            logging.write(f'{meta} composition k-means results in clusters containing one point.\n')
             sscore = np.NaN
         results_dict['compactness'].append(compactness)
         results_dict['metadata'].append(meta)
         results_dict['sil_score'].append(sscore)
+        results_dict['clusters'].append(k)
 
     # print("Should see color_clusters, comp_compactness & comp_clusters!")
     return results_dict
 
 @ht.timing
-def generate_validation_dfs(sample_file_list:list, k_range:list, num_sample_img:int = 10, save_files:bool = True) -> pd.DataFrame:
+def generate_validation_dfs(sample_file_list:list, k_range:list, num_sample_img:int = 10, save_files:bool = True, cache:bool = True) -> pd.DataFrame:
     color_results_list, comp_results_list = [], []
 
     for file in sample_file_list:
         path = fr'./scrap/gridsearch/resized_images_chunk_modfied_{file}.h5'
         file_dict = ht.h5_to_dict(path)
         for k in k_range:
-            color_results = color_columns(file_dict, k = k, num_sample_img=num_sample_img)  
+            if (os.path.isfile(fr'./scrap/cache/color_results_{file}_{k}.pickle')) and (os.path.isfile(fr'./scrap/cache/comp_results_{file}_{k}.pickle')):
+                with open(fr'./scrap/cache/color_results_{file}_{k}.pickle', 'wb') as handle:
+                    comp_results = pickle.load(handle)
+                with open(fr'./scrap/cache/comp_results_{file}_{k}.pickle', 'wb') as handle:
+                    comp_results = pickle.load(handle)
+            else:    
+                color_results = color_columns(file_dict, k = k, num_sample_img=num_sample_img)  
+                comp_results = composition_columns(file_dict, k = k, num_sample_img=num_sample_img)
+            
+            logging.write(f'File: {file} K = {k} has processed/been read in.')
             color_results_list.append(pd.DataFrame(color_results))
-
-            comp_results = composition_columns(file_dict, k = k, num_sample_img=num_sample_img)
             comp_results_list.append(pd.DataFrame(comp_results))
+            
+            if cache:
+                with open(fr'./scrap/cache/color_results_{file}_{k}.pickle', 'wb') as handle:
+                    pickle.dump(color_results, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                with open(fr'./scrap/cache/comp_results_{file}_{k}.pickle', 'wb') as handle:
+                    pickle.dump(comp_results, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                logging.write(f'File: {file} K = {k} has processed and written out.')
 
     color_results_df = pd.concat(color_results_list, ignore_index=True)
     comp_results_df = pd.concat(comp_results_list, ignore_index=True)
@@ -156,7 +163,7 @@ if __name__ == "__main__":
         print(sample_files)
 
         ts = time.time()
-        color_df, comp_df = generate_validation_dfs(sample_files, k_range, num_sample_img=50)
+        color_df, comp_df = generate_validation_dfs(sample_files, k_range, num_sample_img=10)
         te = time.time()
         print(f'Generating validation datasets took {(ts-te)/60}min.')
 

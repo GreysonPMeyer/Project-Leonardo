@@ -2,6 +2,7 @@ import h5py
 from functools import wraps
 from time import time
 import numpy as np
+import pandas as pd
 # import numpy as np
 
 
@@ -66,7 +67,14 @@ def h5_to_dict(filepath:str) -> dict:
 
     return img_dict
 
+def h5_to_pandas_metadata(filepath:str)->pd.DataFrame:
+    h5_file = h5py.File(filepath)
+    df = pd.DataFrame(h5_file['metadata'], columns = ['Artist', 'Image Name', 'Image Type', 'Image URL'])
+    for col in df.select_dtypes('object'):
+        df[col] = df[col].str.decode("utf-8")
+    return df
+
 if __name__ == "__main__":
     path = r'scrap/gridsearch/resized_images_chunk_modfied_68.h5'
-    test = h5_to_dict(path)
+    test = h5_to_pandas_metadata(path)
     pass
