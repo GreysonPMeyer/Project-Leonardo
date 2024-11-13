@@ -64,7 +64,8 @@ def composition_columns(h5_dict:dict, k:int, num_sample_img:int = 10):
     sample_keys = random.sample(sorted(h5_dict.keys()), num_sample_img)
         # what is the actual range for the first h5? How to generalize to the other h5 files?
     for meta in sample_keys:
-        if meta in SKIP_IMAGE_LIST: continue
+        if meta in SKIP_IMAGE_LIST: 
+            continue
         img = h5_dict.get(meta).reshape((200,200,3))
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
@@ -153,7 +154,7 @@ def generate_validation_dfs(sample_file_list:list, k_range:list, num_sample_img:
 
 if __name__ == "__main__":
 
-    k_range = range(2,10)
+    k_range = range(2,6)
 
     if not (os.path.isfile('./color_validation.csv')) and not (os.path.isfile('./comp_validation.csv')):
         num_files = 72
@@ -163,7 +164,7 @@ if __name__ == "__main__":
         print(sample_files)
 
         ts = time.time()
-        color_df, comp_df = generate_validation_dfs(sample_files, k_range, num_sample_img=10)
+        color_df, comp_df = generate_validation_dfs(sample_files, k_range, num_sample_img=50)
         te = time.time()
         print(f'Generating validation datasets took {(ts-te)/60}min.')
 
@@ -181,13 +182,13 @@ if __name__ == "__main__":
 
     print(comp_df[comp_df['sil_score'].isna()])
 
-    for obj in comp_df.loc[comp_df['sil_score'].isna(), 'metadata'].unique():
-        if len(comp_df[comp_df['metadata']== obj]) == len(k_range):
-            comp_df = comp_df[comp_df['metadata']!= obj]
-            comp_df = pd.concat([comp_df, pd.DataFrame({'compactness':np.NaN,
-                                                        'metadata':obj,
-                                                        'clusters':0,
-                                                        'sil_score': np.inf}, index=[0])])
+    # for obj in comp_df.loc[comp_df['sil_score'].isna(), 'metadata'].unique():
+    #     if len(comp_df[comp_df['metadata']== obj]) == len(k_range):
+    #         comp_df = comp_df[comp_df['metadata']!= obj]
+    #         comp_df = pd.concat([comp_df, pd.DataFrame({'compactness':np.NaN,
+    #                                                     'metadata':obj,
+    #                                                     'clusters':0,
+    #                                                     'sil_score': np.inf}, index=[0])])
 
     # Drop NaNs, since these instances can't be compared
     comp_df.dropna(inplace=True, subset='sil_score')
