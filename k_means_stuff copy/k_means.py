@@ -6,23 +6,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import h5py
+from scipy.spatial.distance import cdist
+from scipy.optimize import linear_sum_assignment
 
+# This is the chunk of data being used
 df_path = "/Users/greysonmeyer/Downloads/resized_images_chunk_0.h5".format(2)
 
-
-def print_structure(name, obj):
-    """Recursive function to print the structure of the HDF5 file."""
-    print(f"{name}: {type(obj)}")
-    if isinstance(obj, h5py.Group):
-        for sub_name, sub_obj in obj.items():
-            print_structure(f"{name}/{sub_name}", sub_obj)
-
 def create_test_set(input_file_path):
+    # Creates an h5file from a chunk of the dataset, for the sake of time for testing
     output_file_path = "/Users/greysonmeyer/Desktop/Erdos_Work/k_means_stuff/tester.h5"  
 
     with h5py.File(input_file_path, 'r') as original_file:
         with h5py.File(output_file_path, 'w') as new_file:
-            for i in range(1, 20):
+            for i in range(45):
                 new_file.create_dataset(f"images/{i}", data=original_file[f'images/{i}'], compression="gzip", compression_opts=1)
                 new_file.create_dataset(f"metadata/{i}/artist_full_name", data=original_file[f"metadata/{i}/artist_full_name"])
                 new_file.create_dataset(f"metadata/{i}/artwork_name", data=original_file[f"metadata/{i}/artwork_name"])
@@ -32,47 +28,56 @@ def create_test_set(input_file_path):
     return output_file_path
 
 def color_columns(path):
-    # Calculates the color clusters for a dataset and saves this in k+1 news columns in the dataset.
-    # The cluster order is determined by the magnitude of the RGB vector in R^3 
+    # Calculates the color clusters, sorts them, then includes them in the metadata
+
     color_dict = dict()
-    # display_set = []
     with h5py.File(path, 'a') as df:
         for i in df['images'].keys():
-            img = np.array(df[f'images/{i}'])
-            img_RGB = img # cv2.cvtColor(img, cv2.COLOR_BGR2RGB) # This has a 200 x 200 x 3 shape
+            img_RGB = np.array(df[f'images/{i}'][:])
             
             # Reshape image to an Mx3 array
             img_data = img_RGB.reshape(-1, 3)
+
             # Specify the algorithm's termination criteria
             criteria = (cv2.TERM_CRITERIA_MAX_ITER + cv2.TERM_CRITERIA_EPS, 10, 1.0)
             # Run the k-means clustering algorithm on the pixel values
             # labels is a column where each entry contains the center associated to that row's pixel
             # centers is the list of the 5 center colors
-            # compactness is just a number. Kind of annoying that it's not a number for each cluster tho
+            # compactness is just a number
             compactness, labels, centers = cv2.kmeans(data=img_data.astype(np.float32), K=5, bestLabels=None, criteria=criteria, attempts=10, flags=cv2.KMEANS_RANDOM_CENTERS)
-            centers_sorted = sorted(centers, key=lambda x: np.linalg.norm(x))
+            norms = np.linalg.norm(centers, axis=1)
+
+            # Sort centers by norms and get sorted indices
+            sorted_indices = np.argsort(norms)
+            centers_sorted = centers[sorted_indices]
+
+            # Re-map labels according to the sorted order of centers
+            # The labels are nice to have if you want to display the image using only the cluster colors
+            sorted_labels = np.zeros_like(labels)
+            for new_label, old_label in enumerate(sorted_indices):
+                sorted_labels[labels == old_label] = new_label
 
             # If there are less than k clusters, add extra white clusters
             if len(centers_sorted) < 5:
                 for l in range(5 - len(centers_sorted)):
                     np.append(centers_sorted, np.array([255, 255, 255]))
 
-            color_dict[i] = [compactness, centers_sorted]
+            color_dict[i] = [compactness, centers_sorted, sorted_labels]
 
         for j in color_dict.keys():
-            # df.create_dataset(f"metadata/{j}/color_compactness", data=color_dict[j][0])
             df.create_dataset(f"metadata/{j}/color_clusters", data=color_dict[j][1])
+            df.create_dataset(f"metadata/{j}/labels", data = color_dict[j][2])
 
     return path
 
 def composition_columns(path):
-    # Calculates the composition clusters and saves this in k+1 new columns in the dataset.
+    # Calculates the composition clusters and adds them to the metadata
     # The cluster order is determined by the cluster position with the largest y-value, and then we work top
     # to bottom 
+
     comp_dict = dict()
     # Load image and convert to grayscale
     with h5py.File(path, 'a') as df:
-        # what is the actual range for the first h5? How to generalize to the other h5 files?
         for i in df['images'].keys():
             img = np.array(df[f'images/{i}'])
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -106,63 +111,50 @@ def composition_columns(path):
             sorted_centers = sorted(centers, key=lambda c: (c[1], c[0]), reverse=True)
             comp_dict[i] = [compactness, sorted_centers]
 
-            if i == '2':
-                output_image = df['images/2'][:].copy()
-                for idx, center in enumerate(centers):
-                    cv2.circle(output_image, (int(center[0]), int(center[1])), 10, (0, 255, 0), -1)
-                cv2.imshow("Cluster Centers", output_image)
-                cv2.waitKey(0)
-                cv2.destroyAllWindows()
-
-
+        # I haven't been using comp_compactness for anything, but we could maybe use it if we wanted to
         for j in comp_dict.keys():
             df.create_dataset(f"metadata/{j}/comp_compactness", data=comp_dict[j][0])
             df.create_dataset(f"metadata/{j}/comp_clusters", data=comp_dict[j][1])
-
+        
     return path
 
 def color_similarity(image, data):
-    # Then we calculate the Euclidean distance between the first color_column of the resized image and 
-    # the first color column of every image in the dataset. Average the K distances to get an average cluster
-    # position difference
-    # Perform the weighted average of the average cluster position difference and the difference in color
-    # composition
-    # Store these values in new columns and return the path to the altered dataset, along with the image & 
-    # metadata of the image that minimizes the weighted average.
+    # Calculates how similar the images from the dataset are to the input image based on the values of the 
+    # color clusters
+
     color_image_path = color_columns(image)
-    color_data_path = color_columns(data) # Comment this out once the data has been pretrained!
-    # fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-    # axes[0].imshow(color_image_path[1][0].astype(np.uint8))
-    # axes[1].imshow(color_data_path[1][0].astype(np.uint8))
-    # plt.show()
+    color_data_path = color_columns(data)
     
     with h5py.File(color_data_path, 'r') as df, h5py.File(color_image_path, 'r') as color:
-        # this should be a list of 5 x 3 arrays
+        # This is a list of 5 x 3 arrays
         color_data = [
             df[f'metadata/{group}/color_clusters'][:]
             for group in df['metadata']
         ]
 
-        # this should be a 5 x 3 array
+        # This is a 5 x 3 array
         image_clusters = color['metadata/0/color_clusters'][:]
 
-        # each row is a cluster and each column is an image
-        distances = np.empty((5,0))
+        # Each row is a cluster and each column is an image
+        distances = []
         for datum in color_data:
-            cluster_distance = np.linalg.norm(datum - image_clusters, axis=1) # axis = 1 means it's using rows
-            distances = np.hstack((distances, cluster_distance[:, np.newaxis]))           
-
-        row_averages = np.mean(distances, axis=0)
+            # Compare the Euclidean distance between each array in color_data and the image_clusters
+            cluster_distance = cdist(datum, image_clusters, metric='euclidean')
+            # Calculate the minimum distance for each centroid in datum to any centroid in image_clusters
+            min_distances = cluster_distance.min(axis=1)
+            color_similarity_score = np.mean(min_distances)
+            distances.append(color_similarity_score)           
         
-        winner_image_index = list(df['metadata'].keys())[np.argmin(row_averages)]
+        # The index of the image with the smallest mean centroid distance
+        color_winner_index = list(df['metadata'].keys())[np.argmin(distances)]
+        # We'll use distances again for the overall comparison. We need it to be an array for the calculations
+        distance_vector = np.array(distances)
 
-    return winner_image_index, row_averages
+    return color_winner_index, distance_vector
 
 def composition_similarity(image, data):
-    # Calculates average distance between the cluster-positions for associated clusters. It also calculates the
-    # differences between the overall cluster densities. It then takes the average of these values and puts this
-    # weighted average into a new column of the dataset. It returns the minimizing element of the dataset and 
-    # the dataset itself
+    # Calculates how similar the images from the dataset are to the input image based on the positions of the 
+    # color clusters
     comp_image_path = composition_columns(image)
     comp_data_path = composition_columns(data)
     with h5py.File(comp_data_path, 'r') as df, h5py.File(comp_image_path, 'r') as img:
@@ -172,44 +164,28 @@ def composition_similarity(image, data):
             for group in df['metadata']
         ]
 
-        comp_compactness = [
-            df[f'metadata/{group}/comp_compactness'][()]
-            for group in df['metadata']
-        ]
-
         image_clusters = img[f'metadata/0/comp_clusters'][:]
-        image_compactness = img[f'metadata/0/comp_compactness'][()]
 
-        output_image = img['images/0'][:].copy()
-        for idx, center in enumerate(image_clusters):
-            cv2.circle(output_image, (int(center[0]), int(center[1])), 10, (0, 255, 0), -1)
-        cv2.imshow("Cluster Centers", output_image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-
-        comps = np.hstack(comp_compactness) # array with one row of compactness scores 
-        comp_distance = np.abs(comps - image_compactness)
-
-        distances = np.empty((5,0))
+        # Same process as in color similarity
+        distances = []
         for datum in comp_clusters:
-            cluster_distance = np.linalg.norm(datum - image_clusters, axis=1)
-            distances = np.hstack((distances, cluster_distance[:, np.newaxis])) 
+            cluster_distance = cdist(image_clusters, datum, metric='euclidean')
+            row_indices, col_indices = linear_sum_assignment(cluster_distance)
+            total_distance = cluster_distance[row_indices, col_indices].sum()
+            average_distance = total_distance / len(row_indices)
+            distances.append(average_distance)
 
-        row_averages = np.mean(distances, axis=0)
+        winner_image_index = list(df['metadata'].keys())[np.argmin(distances)]
+        comp_dist_vector = np.array(distances)
 
-        # overall_comp_similarities = 0.5 * np.abs(comp_distance - row_averages)
-        winner_image_index = list(df['metadata'].keys())[np.argmin(row_averages)]
-        # winner_image_index = list(df['metadata'].keys())[np.argmin(overall_comp_similarities)]
-
-    return winner_image_index, row_averages # , overall_comp_similarities
+    return winner_image_index, comp_dist_vector
 
 def similar_art(image, weight, data):
-    # Start by resizing the image using Sun's code and put it in an h5file with one image group  
-    # Uses the above functions to return the color-similar artwork and the composition-similar artwork. It then
-    # takes the datatset with the two new color_similarity & composition_similarity columns and computes the
-    # overall_weighted average of these columns. It then returns the image with the smallest overall_weighted 
-    # average. So it returns three images and all of the metadata associated to these images
+    # Start by resizing the image
     img = cv2.resize(image, (200, 200), interpolation=cv2.INTER_AREA)
+
+    # We create an h5file to store the image in, along with some empty metadata groups to be filled in by 
+    # color_columns and composition_columns
     img_file = "/Users/greysonmeyer/Desktop/Erdos_Work/k_means_stuff/input_image.h5"
     with h5py.File(img_file, 'w') as file:
         file.create_dataset("images/0", data=img, compression="gzip", compression_opts=1)
@@ -220,22 +196,19 @@ def similar_art(image, weight, data):
     overall_avgs = weight * color_averages + (1 - weight) * comp_averages
 
     with h5py.File(data, 'r') as df:
+        # Finds the index of the overall match
         overall_match_index = list(df['metadata'].keys())[np.argmin(overall_avgs)]
-        # overall_match_index = starting_group_num + np.argmin(overall_avgs)
-        img_color = df[f'images/{color_match_index}'][:]
+        # Finds the winning images
+        img_color = df[f'images/{color_match_index}'][:]    
         img_comp = df[f'images/{comp_match_index}'][:]
         img_overall = df[f'images/{overall_match_index}'][:]
 
+        # Titles for display purposes
         color_title = str(df[f'metadata/{color_match_index}/artwork_name'][()].decode('utf-8')) + ' by ' + str(df[f'metadata/{color_match_index}/artist_full_name'][()].decode('utf-8'))
-
         comp_title = df[f'metadata/{comp_match_index}/artwork_name'][()].decode('utf-8') + ' by ' + df[f'metadata/{comp_match_index}/artist_full_name'][()].decode('utf-8')
-
         overall_title = df[f'metadata/{overall_match_index}/artwork_name'][()].decode('utf-8') + ' by ' + df[f'metadata/{overall_match_index}/artist_full_name'][()].decode('utf-8')
 
-        # img_color = mpimg.imread('path/to/image1.jpg')  # Replace with your image paths
-        # img2 = mpimg.imread('path/to/image2.jpg')  # Replace with your image paths
-        # img3 = mpimg.imread('path/to/image3.jpg')  # Replace with your image paths
-
+        # Plot
         fig, axes = plt.subplots(1, 3, figsize=(15, 5))
 
         axes[0].imshow(img_color)
@@ -251,16 +224,12 @@ def similar_art(image, weight, data):
         axes[2].axis('off')
 
         plt.subplots_adjust(wspace=0.4)
-
-        # Show the plot
         plt.tight_layout()
         plt.show()
 
     return 'color match: ', color_title, '; composition match: ', comp_title, '; overall match: ', overall_title
     
 test_path = create_test_set(df_path)
-
-test_image_path = '/Users/greysonmeyer/downloads/saved.png'
+test_image_path = '/Users/greysonmeyer/downloads/donda.jpg'
 test_image = cv2.imread(test_image_path)
-# test_image = cv2.cvtColor(test_image_wrong, cv2.COLOR_BGR2RGB)
 similar_art(test_image, 0.5, test_path)
