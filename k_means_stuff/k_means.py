@@ -64,6 +64,12 @@ def color_columns(path):
 
             color_dict[i] = [compactness, centers_sorted, sorted_labels]
 
+            # if i == '0':
+            #     colours = centers_sorted[sorted_labels].reshape(-1, 3)
+            #     img_colours = colours.reshape(img_RGB.shape)
+            #     plt.imshow(img_colours.astype(np.uint8))
+            #     plt.show()
+
         for j in color_dict.keys():
             df.create_dataset(f"metadata/{j}/color_clusters", data=color_dict[j][1])
             df.create_dataset(f"metadata/{j}/labels", data = color_dict[j][2])
@@ -165,6 +171,10 @@ def composition_similarity(image, data):
         ]
 
         image_clusters = img[f'metadata/0/comp_clusters'][:]
+        # plt.imshow(img['images/0'][:])
+        # x_coords, y_coords = image_clusters[:, 0], image_clusters[:, 1]
+        # plt.scatter(x_coords, y_coords, c='red', s=100, edgecolor='black', label='Centroids')
+        # plt.show()
 
         # Same process as in color similarity
         distances = []
@@ -177,6 +187,15 @@ def composition_similarity(image, data):
 
         winner_image_index = list(df['metadata'].keys())[np.argmin(distances)]
         comp_dist_vector = np.array(distances)
+
+        # winner_clusters = df[f'metadata/{winner_image_index}/comp_clusters'][:]
+        # plt.imshow(df[f'images/{winner_image_index}'][:])
+        # x_coords, y_coords = winner_clusters[:, 0], winner_clusters[:, 1]
+        # plt.scatter(x_coords, y_coords, c='red', s=100, edgecolor='black', label='Centroids')
+        # plt.show()
+
+        # plt.imshow(df[f'images/{winner_image_index}'][:])
+        # plt.show()
 
     return winner_image_index, comp_dist_vector
 
@@ -230,6 +249,7 @@ def similar_art(image, weight, data):
     return 'color match: ', color_title, '; composition match: ', comp_title, '; overall match: ', overall_title
     
 test_path = create_test_set(df_path)
-test_image_path = '/Users/greysonmeyer/downloads/donda.jpg'
+test_image_path = '/Users/greysonmeyer/Desktop/oh.png'
 test_image = cv2.imread(test_image_path)
-similar_art(test_image, 0.5, test_path)
+test_image_conv = cv2.cvtColor(test_image, cv2.COLOR_BGR2RGB)
+similar_art(test_image_conv, 0.5, test_path)
