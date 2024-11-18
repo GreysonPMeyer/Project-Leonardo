@@ -1,4 +1,4 @@
-Opencv-python-headless
+opencv-python-headless
 PIL
 numpy
 requests
