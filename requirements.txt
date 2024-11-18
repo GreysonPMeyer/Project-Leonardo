@@ -1,0 +1,4 @@
+Opencv-python-headless
+PIL
+numpy
+requests
