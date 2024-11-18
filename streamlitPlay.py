@@ -12,9 +12,9 @@ import requests
 from PIL import Image
 from io import BytesIO
 
-"""
-page set up
-""" 
+
+## page set up
+
 
 # project title
 st.markdown("# Project Leonardo")
@@ -22,9 +22,9 @@ st.markdown("# Project Leonardo")
 st.write("Using ML to find similar arts.")
 
 
-"""
-image loader
-""" 
+
+## image loader
+ 
 
 container_image_loader = st.container(border = True) # make container for the image loader
 container_image_loader.markdown("#### Image loader") # title
@@ -72,9 +72,9 @@ if button_load_image: # if button clicked
                 container_image_loader.write(f"Cannot load image")
 
 
-"""
-parameter setting and generation
-"""
+
+## parameter setting and generation
+
 form = st.form(key="form_settings") # make a form for submitting the parameters
 form.markdown("#### Parameters") # title
 
