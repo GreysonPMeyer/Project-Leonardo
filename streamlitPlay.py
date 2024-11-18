@@ -1,4 +1,11 @@
 import streamlit as st
+st.set_page_config(
+    page_title="Project Leanardo", 
+    page_icon="🖼️", 
+    initial_sidebar_state="collapsed"
+)
+
+
 import cv2
 import numpy as np
 import requests
@@ -8,11 +15,6 @@ from io import BytesIO
 """
 page set up
 """ 
-
-# set icon
-st.set_page_config(
-    page_title="Project Leanardo", page_icon="🖼️", initial_sidebar_state="collapsed"
-)
 
 # project title
 st.markdown("# Project Leonardo")
