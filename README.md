@@ -6,7 +6,7 @@ Welcome to the Project-Leonardo! This tool helps users find similar art pieces b
 2. [Features](#features)
 3. [App](#app)
 4. [Usage](#usage)
-5. [Licence](#licence)
+5. [License](#license)
 
 
 ## About <a name="about"></a>
@@ -35,5 +35,5 @@ Here is the usage process of the App:
 4. Explore results: Browse through the similar art pieces, view their details, and discover new artworks.
 
 
-## Licence <a name="licence"></a>
-This project is licensed under the MIT License - see the [LICENCE]() file for details.
+## License <a name="license"></a>
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/BotanCevik2/Project-Leonardo/blob/main/LICENSE) file for details.
