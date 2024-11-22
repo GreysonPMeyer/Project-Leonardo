@@ -45,8 +45,9 @@ def color_columns(img):
 
     # If there are less than k clusters, add extra white clusters
     if len(centers_sorted) < 5:
+        first_center = centers_sorted[0]
         for l in range(5 - len(centers_sorted)):
-            np.append(centers_sorted, np.array([255, 255, 255]), axis=0)
+            np.append(centers_sorted, np.array(first_center), axis=0)
 
     return centers_sorted
 
@@ -76,6 +77,7 @@ def composition_columns(image):
 
     # Convert centers to float32 for k-means
     contour_centers = np.float32(contour_centers)
+    print(contour_centers)
 
     # Define criteria and number of clusters (K)
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.2)
@@ -84,16 +86,17 @@ def composition_columns(image):
         sorted_centers = np.array([[0,0], [0,0], [0,0], [0,0], [0,0]])
     elif len(contour_centers) == 1:
         # If you only have one contour center, then kmeans no longer returns tuples
-        sorted_centers = contour_centers.concatenate(np.array([[0,0], [0,0], [0,0], [0,0]]))
+        sorted_centers = contour_centers.concatenate(np.array([contour_centers[0], contour_centers[0], contour_centers[0], contour_centers[0]]))
     elif 1 < len(contour_centers) < 5:
         # hdf5files struggle to contain informatio that is not of a uniform size, so we add copies of the origin
         K = len(contour_centers)
         compactness, labels, centers = cv2.kmeans(contour_centers, K, None, criteria, 10, cv2.KMEANS_PP_CENTERS)
         sorted_centers = sorted(centers, key=lambda c: (c[1], c[0]), reverse=True)
+        first_s_center = sorted_centers[0]
         for _ in range(5 - len(sorted_centers)):
-            sorted_centers.concatenate([0,0])
+            sorted_centers.concatenate(first_s_center)
     else:
-        K = 5 
+        K = 5
         compactness, labels, centers = cv2.kmeans(contour_centers, K, None, criteria, 10, cv2.KMEANS_PP_CENTERS)
         sorted_centers = np.array(sorted(centers, key=lambda c: (c[1], c[0]), reverse=True))
         
@@ -195,6 +198,7 @@ def display_art(image, weight, data_list):
 
         # Downloads the image from the url and makes it presentable
         img_color_url = color['metadata'][color_match_index][3].decode('utf-8')
+        print(img_color_url)
         response = requests.get(img_color_url)
         image_color_array = np.array(bytearray(response.content), dtype=np.uint8)
         img_color_BGR = cv2.imdecode(image_color_array, cv2.IMREAD_COLOR)
@@ -251,6 +255,8 @@ def display_art(image, weight, data_list):
     # Show the plot
     plt.tight_layout()
     plt.show()
+    
+    return img_color, color_title, img_comp, comp_title, img_overall, overall_title
 
 def resize_and_convert_image(image_array, target_size=(200, 200)):
     # Copy of Sun's code for consistency in resizing
@@ -268,10 +274,19 @@ def resize_and_convert_image(image_array, target_size=(200, 200)):
     return np.array(image)
 
 # This is the chunk of data being used
-df_path = "/Users/greysonmeyer/Downloads/resized_images_chunk_modfied_0.h5"
-test_path = create_test_set(df_path)
-test_image_path = '/Users/greysonmeyer/Downloads/canal310.jpg'
+df_path_1 = "/Users/greysonmeyer/Downloads/resized_images_chunk_modfied_105.h5"
+df_path_2 = "/Users/greysonmeyer/Downloads/resized_images_chunk_modfied_0.h5"
+test_image_path = '/Users/greysonmeyer/Downloads/coronati.jpg'
+# test_image_path = '/Users/greysonmeyer/Desktop/canal310_color_clustered.png'
+# test_image_path = '/Users/greysonmeyer/Downloads/dbcwxcx-05d95715-be49-4177-8579-9bc846ed2ab8.jpg'
 test_image = cv2.imread(test_image_path)
 test_image_conv = cv2.cvtColor(test_image, cv2.COLOR_BGR2RGB)
+# test_image_conv_2 = cv2.cvtColor(test_image_conv, cv2.COLOR_RGB2GRAY)
 input_img = resize_and_convert_image(test_image_conv, (200, 200))
-display_art(input_img, 0.5, [test_path])
+display_art(input_img, 0.5, [df_path_1, df_path_2])
+
+# diff = cv2.absdiff(input_img, imag)
+# print("Max pixel difference:", diff.max())
+# cv2.imshow("Difference", diff)
+# cv2.waitKey(0)
+# cv2.destroyAllWindows()

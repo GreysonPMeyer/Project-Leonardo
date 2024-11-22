@@ -255,7 +255,7 @@ def similar_art(image, weight, data):
     return 'color match: ', color_title, '; composition match: ', comp_title, '; overall match: ', overall_title
 
 test_path = create_test_set(df_path)
-test_image_path = '/Users/greysonmeyer/Downloads/donda.jpg'
+test_image_path = '/Users/greysonmeyer/Downloads/canal310.jpg'
 test_image = cv2.imread(test_image_path)
 test_image_conv = cv2.cvtColor(test_image, cv2.COLOR_BGR2RGB)
 similar_art(test_image_conv, 0.5, test_path)

@@ -10,19 +10,20 @@ from scipy.spatial.distance import cdist
 from scipy.optimize import linear_sum_assignment
 
 # This is the chunk of data being used
-df_path = "/Users/greysonmeyer/Downloads/resized_images_chunk_modfied_0.h5"
+df_path = "/Users/greysonmeyer/Downloads/resized_images_chunk_modfied_105.h5"
 
 def color_columns(img):
     # Find the centers of color clusters for an image
     img_data = img.reshape(-1, 3)
-    criteria = (cv2.TERM_CRITERIA_MAX_ITER + cv2.TERM_CRITERIA_EPS, 10, 1.0)
+    criteria = (cv2.TERM_CRITERIA_MAX_ITER + cv2.TERM_CRITERIA_EPS, 4, 1.0)
     compactness, labels, centers = cv2.kmeans(data=img_data.astype(np.float32), K=5, bestLabels=None, criteria=criteria, attempts=10, flags=cv2.KMEANS_RANDOM_CENTERS)
     norms = np.linalg.norm(centers, axis=1)
     sorted_indices = np.argsort(norms)
     centers_sorted = centers[sorted_indices]
+    first_center = centers_sorted[0]
     if len(centers_sorted) < 5:
         for l in range(5 - len(centers_sorted)):
-            np.append(centers_sorted, np.array([255, 255, 255]), axis=0)
+            np.append(centers_sorted, first_center, axis=0)
 
     # Re-map labels according to the sorted order of centers for display purposes
     # The labels are nice to have if you want to display the image using only the cluster colors
@@ -53,13 +54,14 @@ def composition_columns(img):
     if len(contour_centers) == 0:
         sorted_centers = np.array([[0,0], [0,0], [0,0], [0,0], [0,0]])
     elif len(contour_centers) == 1:
-        sorted_centers = np.concatenate((contour_centers, (np.array([[0,0], [0,0], [0,0], [0,0]]))))
+        sorted_centers = np.concatenate((contour_centers, (np.array([contour_centers[0], contour_centers[0], contour_centers[0], contour_centers[0]]))))
     elif 1 < len(contour_centers) < 5:
         K = len(contour_centers)
         compactness, labels, centers = cv2.kmeans(contour_centers, K, None, criteria, 10, cv2.KMEANS_PP_CENTERS)
         s_centers = sorted(centers, key=lambda c: (c[1], c[0]), reverse=True)
+        first_s_center = s_centers[0]
         for _ in range(5 - len(s_centers)):
-            s_centers.append([0,0])
+            s_centers.append(first_s_center)
         sorted_centers = np.array(s_centers)
     else:
         K = 5  # Choose number of clusters for forms
@@ -70,9 +72,9 @@ def composition_columns(img):
   
 def add_cluster_info(data):
     # This was included for when I was debugging. Shouldn't be necessary now.
-    # with h5py.File(data, 'r+') as df:
-    #     del df['color_clusters']
-    #     del df['composition_clusters']
+    with h5py.File(data, 'r+') as df:
+        del df['color_clusters']
+        del df['composition_clusters']
 
     with h5py.File(data, 'a') as df:
         images = np.array(df['images'])
