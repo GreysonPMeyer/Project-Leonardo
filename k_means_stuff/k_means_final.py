@@ -4,15 +4,16 @@ import os
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
 import h5py
 from scipy.spatial.distance import cdist
 from scipy.optimize import linear_sum_assignment
 from PIL import Image
+import helper_tools as ht
+import logging
 
 def create_test_set(input_file_path):
     # Creates an h5file from a chunk of the dataset, for the sake of time for testing
-    output_file_path = "/Users/greysonmeyer/Desktop/Erdos_Work/k_means_stuff/tester.h5"  
+    output_file_path = "./scrap/gridsearch/resized_images_chunk_modfied_53.h5"  
 
     with h5py.File(input_file_path, 'r') as original_file:
         with h5py.File(output_file_path, 'w') as new_file:
@@ -46,10 +47,10 @@ def color_columns(img):
     # If there are less than k clusters, add extra white clusters
     if len(centers_sorted) < 4:
         first_center = centers_sorted[0]
-        for l in range(4 - len(centers_sorted)):
-            np.append(centers_sorted, np.array(first_center), axis=0)
+        for l in range(5 - len(centers_sorted)):
+            centers_sorted = np.append(centers_sorted, np.array(first_center), axis=0)
 
-    return centers_sorted
+    return np.float64(centers_sorted)
 
 def composition_columns(image):
     # Calculates the composition clusters and adds them to the metadata
@@ -77,7 +78,7 @@ def composition_columns(image):
 
     # Convert centers to float32 for k-means
     contour_centers = np.float32(contour_centers)
-    print(contour_centers)
+    # print(contour_centers)
 
     # Define criteria and number of clusters (K)
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.2)
@@ -86,21 +87,92 @@ def composition_columns(image):
         sorted_centers = np.array([[0,0], [0,0], [0,0], [0,0]])
     elif len(contour_centers) == 1:
         # If you only have one contour center, then kmeans no longer returns tuples
-        sorted_centers = contour_centers.concatenate(np.array([contour_centers[0], contour_centers[0], contour_centers[0]]))
-    elif 1 < len(contour_centers) < 4:
+        sorted_centers = np.concatenate((contour_centers,np.array([contour_centers[0], contour_centers[0], contour_centers[0], contour_centers[0]])))
+    elif 1 < len(contour_centers) < 5:
         # hdf5files struggle to contain informatio that is not of a uniform size, so we add copies of the origin
         K = len(contour_centers)
         compactness, labels, centers = cv2.kmeans(contour_centers, K, None, criteria, 10, cv2.KMEANS_PP_CENTERS)
         sorted_centers = sorted(centers, key=lambda c: (c[1], c[0]), reverse=True)
         first_s_center = sorted_centers[0]
         for _ in range(5 - len(sorted_centers)):
-            sorted_centers.concatenate(first_s_center)
+            sorted_centers = np.concatenate((sorted_centers,first_s_center))
     else:
         K = 4
         compactness, labels, centers = cv2.kmeans(contour_centers, K, None, criteria, 10, cv2.KMEANS_PP_CENTERS)
         sorted_centers = np.array(sorted(centers, key=lambda c: (c[1], c[0]), reverse=True))
         
-    return sorted_centers
+    return np.float64(sorted_centers)
+
+@ht.timing
+def write_final_parquet(chunk_dir_path:str, output_path:str)-> None:
+    """Walks through chunk directory, reads in the chunks and processes each image, and saves the
+    color and composition centroids with metadata in parquet format.
+
+    Args:
+        chunk_dir_path (str): Directory containing the image chunks.
+        output_path (str): Path to save final dataset (must end in .parquet.gzip).
+    """
+    logging.basicConfig(filename='final_processing.log', encoding='utf-8', 
+                        format="%(asctime)s:%(levelname)s:%(message)s",level=logging.DEBUG)
+    results_dict = {}
+    idx = 0
+    for idx, file in enumerate(os.listdir(chunk_dir_path)):
+        if idx >0 :continue
+        chunk_dict = ht.h5_to_dict(os.path.join(chunk_dir_path, file))
+        for meta, img in chunk_dict.items():
+            try:
+                color_centers = color_columns(img) 
+                comp_centers = composition_columns(img)
+                artist, img_name, img_type, img_url = meta
+
+                results_dict[idx] = [artist, img_name, img_type, img_url, color_centers, comp_centers]
+                idx +=1
+            except Exception as e:
+                logging.debug(f'{meta}: {e}')
+                # print(meta)
+        
+    results_df = pd.DataFrame.from_dict(results_dict,orient='index', 
+                                        columns=['artist_name', 'img_name','img_type', 'img_url',
+                                                 'color_centers', 'comp_centers'])
+    # ['Artist', 'Image Name', 'Image Type', 'Image URL']
+    # results_df['artist'] = results_df.iloc[:,0]
+    results_df.astype(str).to_parquet(output_path, compression='gzip')
+    # results_df.to_hdf('./test4.h5', 'results_df', format='table', mode='w')
+    # results_df.to_hdf('./test2.h5', key = 'df', mode = 'w')
+    # results_df.to_csv('./test2.csv')
+    return
+
+def color_similarity_df(input_image, color_centers_df:pd.DataFrame):
+    # Calculates how similar the images from the dataset are to the input image based on the values of the 
+    # color clusters
+
+    color_image_clusters = color_columns(input_image)
+    
+    # with h5py.File(data, 'r') as df:
+        # This is a list of 5 x 3 arrays
+        # color_data = df['color_clusters'][:]
+
+        # Each row is a cluster and each column is an image
+    # distances = []
+        # for datum in color_data:
+            # Compare the Euclidean distance between each array in color_data and the image_clusters
+    # for col in color_centers_df.columns:
+    #     col_series = color_centers_df[col].str.split().apply(lambda x: np.array(x))
+    #     col_array = np.array.from_list(col_series, dtype=np.float64)
+    #     cluster_distance = cdist(color_centers_df[col], color_image_clusters, metric='euclidean')
+        # Calculate the minimum distance for each centroid in datum to any centroid in image_clusters
+    distances = color_centers_df.apply(lambda row: np.linalg.norm(row - color_image_clusters,2))
+    min_distances = cluster_distance.min(axis=1)
+    color_similarity_score = np.mean(min_distances)
+        # distances.append(color_similarity_score)           
+            
+            # The index of the image with the smallest mean centroid distance
+    color_winner_index = np.argmin(distances)
+            # We'll use distances again for the overall comparison. We need it to be an array for the calculations
+    distance_vector = np.array(distances)
+
+    return color_winner_index, distance_vector
+
 
 def color_similarity(image, data):
     # Calculates how similar the images from the dataset are to the input image based on the values of the 
@@ -274,19 +346,25 @@ def resize_and_convert_image(image_array, target_size=(200, 200)):
     return np.array(image)
 
 # This is the chunk of data being used
-df_path_1 = "/Users/greysonmeyer/Downloads/resized_images_chunk_modfied_105.h5"
-df_path_2 = "/Users/greysonmeyer/Downloads/resized_images_chunk_modfied_0.h5"
-test_image_path = '/Users/greysonmeyer/Downloads/coronati.jpg'
-# test_image_path = '/Users/greysonmeyer/Desktop/canal310_color_clustered.png'
-# test_image_path = '/Users/greysonmeyer/Downloads/dbcwxcx-05d95715-be49-4177-8579-9bc846ed2ab8.jpg'
-test_image = cv2.imread(test_image_path)
-test_image_conv = cv2.cvtColor(test_image, cv2.COLOR_BGR2RGB)
-# test_image_conv_2 = cv2.cvtColor(test_image_conv, cv2.COLOR_RGB2GRAY)
-input_img = resize_and_convert_image(test_image_conv, (200, 200))
-display_art(input_img, 0.5, [df_path_1, df_path_2])
+# df_path = "./scrap/gridsearch/resized_images_chunk_modfied_53.h5"
+dir = fr'./scrap/gridsearch/'
+# test_path = create_test_set(df_path)
+# test_image_path = '/Users/greysonmeyer/Downloads/canal310.jpg'
+# test_image = cv2.imread(test_image_path)
+# test_image_conv = cv2.cvtColor(test_image, cv2.COLOR_BGR2RGB)
+# input_img = resize_and_convert_image(test_image_conv, (200, 200))
+# display_art(input_img, 0.5, [test_path])
 
-# diff = cv2.absdiff(input_img, imag)
-# print("Max pixel difference:", diff.max())
-# cv2.imshow("Difference", diff)
-# cv2.waitKey(0)
-# cv2.destroyAllWindows()
+write_final_parquet(dir, './test4.parquet.gzip')
+# from time import time
+# ts = time()
+
+df = pd.read_parquet('./test4.parquet.gzip')
+color_centers = df['color_centers'].str.replace('[', '').str.replace(']', '').str.replace('\n', '').apply(lambda x: np.fromstring(x, sep = ' ').reshape(5,3))
+comp_centers = df['comp_centers'].str.replace('[', '').str.replace(']', '').str.replace('\n', '').apply(lambda x: np.fromstring(x, sep = ' ').reshape(5,3))
+test_img = cv2.cvtColor(cv2.imread('./scrap/validation/test_images/test1.jpg'), cv2.COLOR_BGR2RGB)
+# x,y =  color_similarity_df(test_img, color_centers)
+pass
+# te = time()
+
+# print(te-ts)
