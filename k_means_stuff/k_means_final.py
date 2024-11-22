@@ -47,7 +47,7 @@ def color_columns(img):
     # If there are less than k clusters, add extra white clusters
     if len(centers_sorted) < 4:
         first_center = centers_sorted[0]
-        for l in range(5 - len(centers_sorted)):
+        for l in range(4 - len(centers_sorted)):
             centers_sorted = np.append(centers_sorted, np.array(first_center), axis=0)
 
     return np.float64(centers_sorted)
@@ -84,17 +84,17 @@ def composition_columns(image):
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.2)
     if len(contour_centers) == 0:
         # This case exists and is annoying, so I made all of the clusters at the origin
-        sorted_centers = np.array([[0,0], [0,0], [0,0], [0,0]])
+        sorted_centers = np.array([[0,0, 0], [0,0, 0], [0,0, 0], [0,0, 0]])
     elif len(contour_centers) == 1:
         # If you only have one contour center, then kmeans no longer returns tuples
         sorted_centers = np.concatenate((contour_centers,np.array([contour_centers[0], contour_centers[0], contour_centers[0], contour_centers[0]])))
-    elif 1 < len(contour_centers) < 5:
+    elif 1 < len(contour_centers) < 4:
         # hdf5files struggle to contain informatio that is not of a uniform size, so we add copies of the origin
         K = len(contour_centers)
         compactness, labels, centers = cv2.kmeans(contour_centers, K, None, criteria, 10, cv2.KMEANS_PP_CENTERS)
         sorted_centers = sorted(centers, key=lambda c: (c[1], c[0]), reverse=True)
         first_s_center = sorted_centers[0]
-        for _ in range(5 - len(sorted_centers)):
+        for _ in range(4 - len(sorted_centers)):
             sorted_centers = np.concatenate((sorted_centers,first_s_center))
     else:
         K = 4
@@ -117,11 +117,12 @@ def write_final_parquet(chunk_dir_path:str, output_path:str)-> None:
     results_dict = {}
     idx = 0
     for file in os.listdir(chunk_dir_path):
+        # if test>0:continue
         chunk_dict = ht.h5_to_dict(os.path.join(chunk_dir_path, file))
         for meta, img in chunk_dict.items():
             try:
                 color_centers = color_columns(img) 
-                comp_centers = composition_columns(img)
+                comp_centers = composition_columns(img[0])
                 artist, img_name, img_type, img_url = meta
 
                 results_dict[idx] = [artist, img_name, img_type, img_url, color_centers, comp_centers]
@@ -359,8 +360,8 @@ write_final_parquet(dir, './test4.parquet.gzip')
 # ts = time()
 
 df = pd.read_parquet('./test4.parquet.gzip')
-color_centers = df['color_centers'].str.replace('[', '').str.replace(']', '').str.replace('\n', '').apply(lambda x: np.fromstring(x, sep = ' ').reshape(5,3))
-comp_centers = df['comp_centers'].str.replace('[', '').str.replace(']', '').str.replace('\n', '').apply(lambda x: np.fromstring(x, sep = ' ').reshape(5,3))
+color_centers = df['color_centers'].str.replace('[', '').str.replace(']', '').str.replace('\n', '').apply(lambda x: np.fromstring(x, sep = ' ').reshape(4,3))
+comp_centers = df['comp_centers'].str.replace('[', '').str.replace(']', '').str.replace('\n', '').apply(lambda x: np.fromstring(x, sep = ' ').reshape(4,3))
 test_img = cv2.cvtColor(cv2.imread('./scrap/validation/test_images/test1.jpg'), cv2.COLOR_BGR2RGB)
 # x,y =  color_similarity_df(test_img, color_centers)
 pass
