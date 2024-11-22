@@ -116,8 +116,7 @@ def write_final_parquet(chunk_dir_path:str, output_path:str)-> None:
                         format="%(asctime)s:%(levelname)s:%(message)s",level=logging.DEBUG)
     results_dict = {}
     idx = 0
-    for idx, file in enumerate(os.listdir(chunk_dir_path)):
-        if idx >0 :continue
+    for file in os.listdir(chunk_dir_path):
         chunk_dict = ht.h5_to_dict(os.path.join(chunk_dir_path, file))
         for meta, img in chunk_dict.items():
             try:
