@@ -48,7 +48,7 @@ def color_columns(img):
     if len(centers_sorted) < 4:
         first_center = centers_sorted[0]
         for l in range(4 - len(centers_sorted)):
-            centers_sorted = np.append(centers_sorted, np.array(first_center), axis=0)
+            centers_sorted = np.concatenate(centers_sorted, np.array(first_center))
 
     return np.float64(centers_sorted)
 
@@ -84,10 +84,10 @@ def composition_columns(image):
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.2)
     if len(contour_centers) == 0:
         # This case exists and is annoying, so I made all of the clusters at the origin
-        sorted_centers = np.array([[0,0, 0], [0,0, 0], [0,0, 0], [0,0, 0]])
+        sorted_centers = np.array([[0,0], [0,0], [0,0], [0,0]])
     elif len(contour_centers) == 1:
         # If you only have one contour center, then kmeans no longer returns tuples
-        sorted_centers = np.concatenate((contour_centers,np.array([contour_centers[0], contour_centers[0], contour_centers[0], contour_centers[0]])))
+        sorted_centers = np.concatenate((contour_centers,np.array([contour_centers[0], contour_centers[0], contour_centers[0]])))
     elif 1 < len(contour_centers) < 4:
         # hdf5files struggle to contain informatio that is not of a uniform size, so we add copies of the origin
         K = len(contour_centers)
@@ -100,7 +100,10 @@ def composition_columns(image):
         K = 4
         compactness, labels, centers = cv2.kmeans(contour_centers, K, None, criteria, 10, cv2.KMEANS_PP_CENTERS)
         sorted_centers = np.array(sorted(centers, key=lambda c: (c[1], c[0]), reverse=True))
-        
+    
+    if sorted_centers.shape != (4,2):
+        print(sorted_centers.shape)
+
     return np.float64(sorted_centers)
 
 @ht.timing
@@ -116,8 +119,8 @@ def write_final_parquet(chunk_dir_path:str, output_path:str)-> None:
                         format="%(asctime)s:%(levelname)s:%(message)s",level=logging.DEBUG)
     results_dict = {}
     idx = 0
-    for file in os.listdir(chunk_dir_path):
-        # if test>0:continue
+    for test, file in enumerate(os.listdir(chunk_dir_path)):
+        if test>0:continue
         chunk_dict = ht.h5_to_dict(os.path.join(chunk_dir_path, file))
         for meta, img in chunk_dict.items():
             try:
