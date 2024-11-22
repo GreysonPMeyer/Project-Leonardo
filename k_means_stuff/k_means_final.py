@@ -36,7 +36,7 @@ def color_columns(img):
     # labels is a column where each entry contains the center associated to that row's pixel
     # centers is the list of the 5 center colors
     # compactness is just a number
-    compactness, labels, centers = cv2.kmeans(data=img_data.astype(np.float32), K=5, bestLabels=None, criteria=criteria, attempts=10, flags=cv2.KMEANS_RANDOM_CENTERS)
+    compactness, labels, centers = cv2.kmeans(data=img_data.astype(np.float32), K=4, bestLabels=None, criteria=criteria, attempts=10, flags=cv2.KMEANS_RANDOM_CENTERS)
     norms = np.linalg.norm(centers, axis=1)
 
     # Sort centers by norms and get sorted indices
@@ -44,9 +44,9 @@ def color_columns(img):
     centers_sorted = centers[sorted_indices]
 
     # If there are less than k clusters, add extra white clusters
-    if len(centers_sorted) < 5:
+    if len(centers_sorted) < 4:
         first_center = centers_sorted[0]
-        for l in range(5 - len(centers_sorted)):
+        for l in range(4 - len(centers_sorted)):
             np.append(centers_sorted, np.array(first_center), axis=0)
 
     return centers_sorted
@@ -83,11 +83,11 @@ def composition_columns(image):
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.2)
     if len(contour_centers) == 0:
         # This case exists and is annoying, so I made all of the clusters at the origin
-        sorted_centers = np.array([[0,0], [0,0], [0,0], [0,0], [0,0]])
+        sorted_centers = np.array([[0,0], [0,0], [0,0], [0,0]])
     elif len(contour_centers) == 1:
         # If you only have one contour center, then kmeans no longer returns tuples
-        sorted_centers = contour_centers.concatenate(np.array([contour_centers[0], contour_centers[0], contour_centers[0], contour_centers[0]]))
-    elif 1 < len(contour_centers) < 5:
+        sorted_centers = contour_centers.concatenate(np.array([contour_centers[0], contour_centers[0], contour_centers[0]]))
+    elif 1 < len(contour_centers) < 4:
         # hdf5files struggle to contain informatio that is not of a uniform size, so we add copies of the origin
         K = len(contour_centers)
         compactness, labels, centers = cv2.kmeans(contour_centers, K, None, criteria, 10, cv2.KMEANS_PP_CENTERS)
@@ -96,7 +96,7 @@ def composition_columns(image):
         for _ in range(5 - len(sorted_centers)):
             sorted_centers.concatenate(first_s_center)
     else:
-        K = 5
+        K = 4
         compactness, labels, centers = cv2.kmeans(contour_centers, K, None, criteria, 10, cv2.KMEANS_PP_CENTERS)
         sorted_centers = np.array(sorted(centers, key=lambda c: (c[1], c[0]), reverse=True))
         

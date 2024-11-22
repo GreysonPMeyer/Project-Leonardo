@@ -16,13 +16,13 @@ def color_columns(img):
     # Find the centers of color clusters for an image
     img_data = img.reshape(-1, 3)
     criteria = (cv2.TERM_CRITERIA_MAX_ITER + cv2.TERM_CRITERIA_EPS, 4, 1.0)
-    compactness, labels, centers = cv2.kmeans(data=img_data.astype(np.float32), K=5, bestLabels=None, criteria=criteria, attempts=10, flags=cv2.KMEANS_RANDOM_CENTERS)
+    compactness, labels, centers = cv2.kmeans(data=img_data.astype(np.float32), K=4, bestLabels=None, criteria=criteria, attempts=10, flags=cv2.KMEANS_RANDOM_CENTERS)
     norms = np.linalg.norm(centers, axis=1)
     sorted_indices = np.argsort(norms)
     centers_sorted = centers[sorted_indices]
     first_center = centers_sorted[0]
-    if len(centers_sorted) < 5:
-        for l in range(5 - len(centers_sorted)):
+    if len(centers_sorted) < 4:
+        for l in range(4 - len(centers_sorted)):
             np.append(centers_sorted, first_center, axis=0)
 
     # Re-map labels according to the sorted order of centers for display purposes
@@ -52,19 +52,19 @@ def composition_columns(img):
     # Define criteria and number of clusters (K)
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.2)
     if len(contour_centers) == 0:
-        sorted_centers = np.array([[0,0], [0,0], [0,0], [0,0], [0,0]])
+        sorted_centers = np.array([[0,0], [0,0], [0,0], [0,0]])
     elif len(contour_centers) == 1:
-        sorted_centers = np.concatenate((contour_centers, (np.array([contour_centers[0], contour_centers[0], contour_centers[0], contour_centers[0]]))))
-    elif 1 < len(contour_centers) < 5:
+        sorted_centers = np.concatenate((contour_centers, (np.array([contour_centers[0], contour_centers[0], contour_centers[0]]))))
+    elif 1 < len(contour_centers) < 4:
         K = len(contour_centers)
         compactness, labels, centers = cv2.kmeans(contour_centers, K, None, criteria, 10, cv2.KMEANS_PP_CENTERS)
         s_centers = sorted(centers, key=lambda c: (c[1], c[0]), reverse=True)
         first_s_center = s_centers[0]
-        for _ in range(5 - len(s_centers)):
+        for _ in range(4 - len(s_centers)):
             s_centers.append(first_s_center)
         sorted_centers = np.array(s_centers)
     else:
-        K = 5  # Choose number of clusters for forms
+        K = 4  # Choose number of clusters for forms
         compactness, labels, centers = cv2.kmeans(contour_centers, K, None, criteria, 10, cv2.KMEANS_PP_CENTERS)
         sorted_centers = sorted(centers, key=lambda c: (c[1], c[0]), reverse=True)
         
