@@ -91,6 +91,7 @@ def composition_columns(image):
     elif 1 < len(contour_centers) < 4:
         # hdf5files struggle to contain informatio that is not of a uniform size, so we add copies of the origin
         K = len(contour_centers)
+        cv2.setRNGSeed(42)
         compactness, labels, centers = cv2.kmeans(contour_centers, K, None, criteria, 10, cv2.KMEANS_PP_CENTERS)
         sorted_centers = sorted(centers, key=lambda c: (c[1], c[0]), reverse=True)
         first_s_center = sorted_centers[0]
@@ -98,6 +99,7 @@ def composition_columns(image):
             sorted_centers = np.concatenate((sorted_centers,first_s_center))
     else:
         K = 4
+        cv2.setRNGSeed(42)
         compactness, labels, centers = cv2.kmeans(contour_centers, K, None, criteria, 10, cv2.KMEANS_PP_CENTERS)
         sorted_centers = np.array(sorted(centers, key=lambda c: (c[1], c[0]), reverse=True))
     
