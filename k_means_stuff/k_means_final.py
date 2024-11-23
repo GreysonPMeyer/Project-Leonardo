@@ -8,7 +8,7 @@ import h5py
 from scipy.spatial.distance import cdist
 from scipy.optimize import linear_sum_assignment
 from PIL import Image
-import helper_tools as ht
+# import helper_tools as ht
 import logging
 
 def create_test_set(input_file_path):
@@ -108,44 +108,44 @@ def composition_columns(image):
 
     return np.float64(sorted_centers)
 
-@ht.timing
-def write_final_parquet(chunk_dir_path:str, output_path:str)-> None:
-    """Walks through chunk directory, reads in the chunks and processes each image, and saves the
-    color and composition centroids with metadata in parquet format.
+# @ht.timing
+# def write_final_parquet(chunk_dir_path:str, output_path:str)-> None:
+#     """Walks through chunk directory, reads in the chunks and processes each image, and saves the
+#     color and composition centroids with metadata in parquet format.
 
-    Args:
-        chunk_dir_path (str): Directory containing the image chunks.
-        output_path (str): Path to save final dataset (must end in .parquet.gzip).
-    """
-    logging.basicConfig(filename='final_processing.log', encoding='utf-8', 
-                        format="%(asctime)s:%(levelname)s:%(message)s",level=logging.DEBUG)
-    results_dict = {}
-    idx = 0
-    for test, file in enumerate(os.listdir(chunk_dir_path)):
-        if test>0:continue
-        chunk_dict = ht.h5_to_dict(os.path.join(chunk_dir_path, file))
-        for meta, img in chunk_dict.items():
-            try:
-                color_centers = color_columns(img) 
-                comp_centers = composition_columns(img[0])
-                artist, img_name, img_type, img_url = meta
+#     Args:
+#         chunk_dir_path (str): Directory containing the image chunks.
+#         output_path (str): Path to save final dataset (must end in .parquet.gzip).
+#     """
+#     logging.basicConfig(filename='final_processing.log', encoding='utf-8', 
+#                         format="%(asctime)s:%(levelname)s:%(message)s",level=logging.DEBUG)
+#     results_dict = {}
+#     idx = 0
+#     for test, file in enumerate(os.listdir(chunk_dir_path)):
+#         if test>0:continue
+#         chunk_dict = ht.h5_to_dict(os.path.join(chunk_dir_path, file))
+#         for meta, img in chunk_dict.items():
+#             try:
+#                 color_centers = color_columns(img) 
+#                 comp_centers = composition_columns(img[0])
+#                 artist, img_name, img_type, img_url = meta
 
-                results_dict[idx] = [artist, img_name, img_type, img_url, color_centers, comp_centers]
-                idx +=1
-            except Exception as e:
-                logging.debug(f'{meta}: {e}')
-                # print(meta)
+#                 results_dict[idx] = [artist, img_name, img_type, img_url, color_centers, comp_centers]
+#                 idx +=1
+#             except Exception as e:
+#                 logging.debug(f'{meta}: {e}')
+#                 # print(meta)
         
-    results_df = pd.DataFrame.from_dict(results_dict,orient='index', 
-                                        columns=['artist_name', 'img_name','img_type', 'img_url',
-                                                 'color_centers', 'comp_centers'])
-    # ['Artist', 'Image Name', 'Image Type', 'Image URL']
-    # results_df['artist'] = results_df.iloc[:,0]
-    results_df.astype(str).to_parquet(output_path, compression='gzip')
-    # results_df.to_hdf('./test4.h5', 'results_df', format='table', mode='w')
-    # results_df.to_hdf('./test2.h5', key = 'df', mode = 'w')
-    # results_df.to_csv('./test2.csv')
-    return
+#     results_df = pd.DataFrame.from_dict(results_dict,orient='index', 
+#                                         columns=['artist_name', 'img_name','img_type', 'img_url',
+#                                                  'color_centers', 'comp_centers'])
+#     # ['Artist', 'Image Name', 'Image Type', 'Image URL']
+#     # results_df['artist'] = results_df.iloc[:,0]
+#     results_df.astype(str).to_parquet(output_path, compression='gzip')
+#     # results_df.to_hdf('./test4.h5', 'results_df', format='table', mode='w')
+#     # results_df.to_hdf('./test2.h5', key = 'df', mode = 'w')
+#     # results_df.to_csv('./test2.csv')
+#     return
 
 def color_similarity_df(input_image, color_centers_df:pd.DataFrame):
     # Calculates how similar the images from the dataset are to the input image based on the values of the 
@@ -352,7 +352,7 @@ def resize_and_convert_image(image_array, target_size=(200, 200)):
 
 # This is the chunk of data being used
 # df_path = "./scrap/gridsearch/resized_images_chunk_modfied_53.h5"
-dir = fr'./scrap/gridsearch/'
+# dir = fr'./scrap/gridsearch/'
 # test_path = create_test_set(df_path)
 # test_image_path = '/Users/greysonmeyer/Downloads/canal310.jpg'
 # test_image = cv2.imread(test_image_path)
@@ -360,16 +360,16 @@ dir = fr'./scrap/gridsearch/'
 # input_img = resize_and_convert_image(test_image_conv, (200, 200))
 # display_art(input_img, 0.5, [test_path])
 
-write_final_parquet(dir, './test4.parquet.gzip')
-# from time import time
-# ts = time()
+# write_final_parquet(dir, './test4.parquet.gzip')
+# # from time import time
+# # ts = time()
 
-df = pd.read_parquet('./test4.parquet.gzip')
-color_centers = df['color_centers'].str.replace('[', '').str.replace(']', '').str.replace('\n', '').apply(lambda x: np.fromstring(x, sep = ' ').reshape(4,3))
-comp_centers = df['comp_centers'].str.replace('[', '').str.replace(']', '').str.replace('\n', '').apply(lambda x: np.fromstring(x, sep = ' ').reshape(4,3))
-test_img = cv2.cvtColor(cv2.imread('./scrap/validation/test_images/test1.jpg'), cv2.COLOR_BGR2RGB)
-# x,y =  color_similarity_df(test_img, color_centers)
-pass
+# df = pd.read_parquet('./test4.parquet.gzip')
+# color_centers = df['color_centers'].str.replace('[', '').str.replace(']', '').str.replace('\n', '').apply(lambda x: np.fromstring(x, sep = ' ').reshape(4,3))
+# comp_centers = df['comp_centers'].str.replace('[', '').str.replace(']', '').str.replace('\n', '').apply(lambda x: np.fromstring(x, sep = ' ').reshape(4,3))
+# test_img = cv2.cvtColor(cv2.imread('./scrap/validation/test_images/test1.jpg'), cv2.COLOR_BGR2RGB)
+# # x,y =  color_similarity_df(test_img, color_centers)
+# pass
 # te = time()
 
 # print(te-ts)
