@@ -15,7 +15,7 @@ df_path = "/Users/greysonmeyer/Downloads/resized_images_chunk_modfied_105.h5"
 def color_columns(img):
     # Find the centers of color clusters for an image
     img_data = img.reshape(-1, 3)
-    criteria = (cv2.TERM_CRITERIA_MAX_ITER + cv2.TERM_CRITERIA_EPS, 4, 1.0)
+    criteria = (cv2.TERM_CRITERIA_MAX_ITER + cv2.TERM_CRITERIA_EPS, 10, 1.0)
     compactness, labels, centers = cv2.kmeans(data=img_data.astype(np.float32), K=4, bestLabels=None, criteria=criteria, attempts=10, flags=cv2.KMEANS_RANDOM_CENTERS)
     norms = np.linalg.norm(centers, axis=1)
     sorted_indices = np.argsort(norms)
