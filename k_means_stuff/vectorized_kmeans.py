@@ -141,7 +141,7 @@ def similar_art(image, weight, data:pd.DataFrame):
     return color_match_index, color_winning_avg, comp_match_index, comp_winning_avg, overall_match_index, overall_winning_avg
 
 def display_art(image:np.array, weight:float, 
-                data_file:str = "https://github.com/BotanCevik2/Project-Leonardo/raw/refs/heads/main/resized_images_cluster_fix.parquet"):
+                data_file:str = "https://github.com/BotanCevik2/Project-Leonardo/raw/refs/heads/main/resized_images_cluster_fix_2.parquet"):
     """ Find similar art in processed parquet file and display the art.
 
     Args:
@@ -177,14 +177,24 @@ def display_art(image:np.array, weight:float,
     color_title = str(df['metadata'][color_winner_idx][1].decode('utf-8')) + ' by ' + str(df['metadata'][color_winner_idx][0].decode('utf-8'))
 
         # Downloads the image from the url and makes it presentable
+
+    headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+}
+                 
+# Send a GET request to the URL
+# response = requests.get(url, headers=headers)
+# image_comp_array = np.array(bytearray(response.content), dtype=np.uint8)
+# img_comp_BGR = cv2.imdecode(image_comp_array, cv2.IMREAD_COLOR)
+# img_comp = cv2.cvtColor(img_comp_BGR, cv2.COLOR_BGR2RGB)
+# plt.imshow(img_comp)
     img_comp_url = df['metadata'][comp_winner_idx][3].decode('utf-8')
     response = requests.get(img_comp_url, headers=headers)
-    print('urlurlurl ', img_comp_url)
-    response = requests.get(img_comp_url)
+    # print('urlurlurl111 ', img_comp_url)
     image_comp_array = np.array(bytearray(response.content), dtype=np.uint8)
-    print('ARRAY ', image_comp_array)
+    # print('ARRAY ', image_comp_array)
     img_comp_BGR = cv2.imdecode(image_comp_array, cv2.IMREAD_COLOR)
-    print('img_comp_BGR ', img_comp_BGR)
+    # print('img_comp_BGR ', img_comp_BGR)
     img_comp = cv2.cvtColor(img_comp_BGR, cv2.COLOR_BGR2RGB)
 
         # Title for the composition winner
