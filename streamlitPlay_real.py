@@ -20,7 +20,7 @@ import matplotlib.image as mpimg
 import h5py
 from scipy.spatial.distance import cdist
 from scipy.optimize import linear_sum_assignment
-from k_means_stuff.k_means_final import display_art, resize_and_convert_image
+from k_means_stuff.vectorized_kmeans import display_art, resize_and_convert_image
 
 
 ## page set up
@@ -124,8 +124,8 @@ if submit_button:
     # url = 'https://raw.githubusercontent.com/BotanCevik2/Project-Leonardo/main/resized_images_cluster_fix.parquet'
     # print(url)
     # df = pd.read_parquet(url, engine="pyarrow")
-    dataset_list = ["/Users/greysonmeyer/Downloads/resized_images_chunk_modfied_105.h5"]
-    img_color, color_title, img_comp, comp_title, img_overall, overall_title = display_art(st.session_state.image_array, st.session_state.slider, df)
+    # dataset_list = ["/Users/greysonmeyer/Downloads/resized_images_chunk_modfied_105.h5"]
+    img_color, color_title, img_comp, comp_title, img_overall, overall_title = display_art(st.session_state.image_array, st.session_state.slider)
     images = [img_color, img_comp, img_overall]
     # color_image = Image.open(img_color)
     # comp_image = Image.open(img_comp)

@@ -179,8 +179,12 @@ def display_art(image:np.array, weight:float,
         # Downloads the image from the url and makes it presentable
     img_comp_url = df['metadata'][comp_winner_idx][3].decode('utf-8')
     response = requests.get(img_comp_url, headers=headers)
+    print('urlurlurl ', img_comp_url)
+    response = requests.get(img_comp_url)
     image_comp_array = np.array(bytearray(response.content), dtype=np.uint8)
+    print('ARRAY ', image_comp_array)
     img_comp_BGR = cv2.imdecode(image_comp_array, cv2.IMREAD_COLOR)
+    print('img_comp_BGR ', img_comp_BGR)
     img_comp = cv2.cvtColor(img_comp_BGR, cv2.COLOR_BGR2RGB)
 
         # Title for the composition winner
