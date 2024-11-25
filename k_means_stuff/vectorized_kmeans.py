@@ -23,6 +23,7 @@ def resize_and_convert_image(image_array, target_size=(200, 200)):
     return np.array(image)
 
 def color_columns(img):
+    cv2.setRNGSeed(42)
     # Calculates the color clusters of the image
 
     img_data = img.reshape(-1, 3)
@@ -50,6 +51,7 @@ def color_columns(img):
     return np.float64(centers_sorted)
 
 def composition_columns(image):
+    cv2.setRNGSeed(42)
     # Calculates the composition clusters and adds them to the metadata
     # The cluster order is determined by the cluster position with the largest y-value, and then we work top
     # to bottom 
@@ -79,7 +81,6 @@ def composition_columns(image):
 
     # Define criteria and number of clusters (K)
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.2)
-    cv2.setRNGSeed(42)
 
     if len(contour_centers) == 0:
         # This case exists and is annoying, so I made all of the clusters at the origin
