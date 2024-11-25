@@ -162,9 +162,13 @@ def display_art(image:np.array, weight:float,
     df['metadata'] = df['metadata'].apply(lambda x: np.array(ast.literal_eval(x)))
     
     color_winner_idx,_, comp_winner_idx, _, overall_winner_idx, _ = similar_art(image, weight, df)
-
+                    
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+    }
+                    
     img_color_url = df['metadata'][color_winner_idx][3].decode('utf-8')
-    response = requests.get(img_color_url)
+    response = requests.get(img_color_url, headers=headers)
     image_color_array = np.array(bytearray(response.content), dtype=np.uint8)
     img_color_BGR = cv2.imdecode(image_color_array, cv2.IMREAD_COLOR)
     img_color = cv2.cvtColor(img_color_BGR, cv2.COLOR_BGR2RGB)
@@ -174,7 +178,7 @@ def display_art(image:np.array, weight:float,
 
         # Downloads the image from the url and makes it presentable
     img_comp_url = df['metadata'][comp_winner_idx][3].decode('utf-8')
-    response = requests.get(img_comp_url)
+    response = requests.get(img_comp_url, headers=headers)
     image_comp_array = np.array(bytearray(response.content), dtype=np.uint8)
     img_comp_BGR = cv2.imdecode(image_comp_array, cv2.IMREAD_COLOR)
     img_comp = cv2.cvtColor(img_comp_BGR, cv2.COLOR_BGR2RGB)
@@ -184,7 +188,7 @@ def display_art(image:np.array, weight:float,
 
     # Downloads the image from the url and makes it presentable
     img_overall_url = df['metadata'][overall_winner_idx][3].decode('utf-8')
-    response = requests.get(img_overall_url)
+    response = requests.get(img_overall_url, headers=headers)
     image_overall_array = np.array(bytearray(response.content), dtype=np.uint8)
     img_overall_BGR = cv2.imdecode(image_overall_array, cv2.IMREAD_COLOR)
     img_overall = cv2.cvtColor(img_overall_BGR, cv2.COLOR_BGR2RGB)
