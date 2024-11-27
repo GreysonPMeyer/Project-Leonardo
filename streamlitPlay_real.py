@@ -85,10 +85,9 @@ if button_load_image: # if button clicked
         # resized_image = cv2.resize(opencv_image, (200, 200), interpolation = cv2.INTER_LINEAR)
         resized_image = resize_and_convert_image(final_image, (200, 200))
         st.session_state.image_array = np.array(resized_image)
-        print('this got reached!')
+        #print('this got reached!')
         # display in the center
 
-        
         col1, col2, col3 = container_image_loader.columns(3)
         with col1:
             st.write(' ')
@@ -104,7 +103,8 @@ if button_load_image: # if button clicked
             response = requests.get(text_URL, headers=headers)
             response.raise_for_status()
             image = Image.open(BytesIO(response.content))
-            resized_image = resize_and_convert_image(image, (200, 200))
+            resized_image = resize_and_convert_image(np.array(image), (200, 200))
+
             # Convert image to numpy array
             st.session_state.image_array = np.array(resized_image)
             col1, col2, col3 = container_image_loader.columns(3)
