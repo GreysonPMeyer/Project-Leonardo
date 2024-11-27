@@ -50,6 +50,8 @@ with st.form(key="my_form"):
     k_cluster = col1.text_input(
         "Number of clusters",
         key="k-clusters",
+        value="4",
+        disabled=True,
     )
     # color / composition ratio
     slider = col2.slider(
@@ -62,12 +64,15 @@ with st.form(key="my_form"):
     # type of art
     art_type = col3.selectbox(
         "Art type",
-        options = ["Painting", "asd", "asd"],
+        options = ["Painting"],
         key = "style",
     )
 
     # Submit button
     submit_button = st.form_submit_button(label="Submit")
+
+container_image_finder = st.container(border = True) # make container for the image finder
+container_image_finder.markdown("#### Proposed Similar Arts") # title
 
 # Code that runs only after the submit button is clicked
 
@@ -120,18 +125,38 @@ if button_load_image: # if button clicked
 if "slider" not in st.session_state:
     st.session_state.slider = slider
 
+# If the find art button is clicked
 if submit_button:
-    # url = 'https://raw.githubusercontent.com/BotanCevik2/Project-Leonardo/main/resized_images_cluster_fix.parquet'
-    # print(url)
-    # df = pd.read_parquet(url, engine="pyarrow")
-    # dataset_list = ["/Users/greysonmeyer/Downloads/resized_images_chunk_modfied_105.h5"]
-    img_color, color_title, img_comp, comp_title, img_overall, overall_title = display_art(st.session_state.image_array, st.session_state.slider)
-    images = [img_color, img_comp, img_overall]
-    # color_image = Image.open(img_color)
-    # comp_image = Image.open(img_comp)
-    # overall_image = Image.open(img_overall)
 
-    col1, col2, col3 = st.columns([1, 3, 1])
-    st.image(img_color, caption=f"Color Recommendation: {color_title}", use_container_width=True)
-    st.image(img_comp, caption=f"Color Recommendation: {color_title}", use_container_width=True)
-    st.image(img_overall, caption=f"Overall Weighted Recommendation: {overall_title}", use_container_width=True)
+    # load original image again
+    if st.session_state.image_array is not None:
+        col1, col2, col3 = container_image_loader.columns(3)
+        with col1:
+            st.write(' ')
+        with col2:
+            st.image(st.session_state.image_array)
+        with col3:
+            st.write(' ')
+
+        # url = 'https://raw.githubusercontent.com/BotanCevik2/Project-Leonardo/main/resized_images_cluster_fix.parquet'
+        # print(url)
+        # df = pd.read_parquet(url, engine="pyarrow")
+        # dataset_list = ["/Users/greysonmeyer/Downloads/resized_images_chunk_modfied_105.h5"]
+        img_color, color_title, img_comp, comp_title, img_overall, overall_title = display_art(st.session_state.image_array, st.session_state.slider)
+        images = [img_color, img_comp, img_overall]
+        # color_image = Image.open(img_color)
+        # comp_image = Image.open(img_comp)
+        # overall_image = Image.open(img_overall)
+
+        col1, col2, col3 = container_image_finder.columns([1, 3, 1])
+        with col1:
+            st.write(' ')
+        with col2:
+            st.image(img_color, caption=f"Color Recommendation: {color_title}")#, use_container_width=True)
+            st.image(img_comp, caption=f"Color Recommendation: {color_title}")#, use_container_width=True)
+            st.image(img_overall, caption=f"Overall Weighted Recommendation: {overall_title}")#, use_container_width=True)
+        with col3:
+            st.write(' ')
+    else:
+        container_image_finder.write('Load an image first')
+    
