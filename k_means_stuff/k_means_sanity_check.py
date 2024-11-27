@@ -10,6 +10,7 @@ from scipy.optimize import linear_sum_assignment
 from PIL import Image
 # import helper_tools as ht
 import logging
+from skimage.metrics import structural_similarity as compare_ssim
 
 def create_test_set(input_file_path):
     # Creates an h5file from a chunk of the dataset, for the sake of time for testing
@@ -252,6 +253,22 @@ def composition_similarity(image, data):
         axes[2].scatter(x_coords, y_coords, c='red', s=100, edgecolor='black', label='Centroids')
 
         plt.show()
+
+        gray1 = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        gray2 = cv2.cvtColor(df['images'][325], cv2.COLOR_BGR2GRAY)
+
+        # Compute SSIM
+        score, diff = compare_ssim(gray1, gray2, full=True)
+        print("SSIM:", score)
+
+        # Normalize the difference for visualization
+        diff = (diff * 255).astype("uint8")
+        cv2.imshow("SSIM Difference", diff)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+        if np.array_equal(image, df['images'][325]):
+            print('yupyup')
 
         # If you would like to see the clusters for the input image, use this code
         # plt.imshow(image)

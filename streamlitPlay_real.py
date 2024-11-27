@@ -78,14 +78,25 @@ if button_load_image: # if button clicked
     # image loading from file
     if uploaded_file is not None:
         # Convert the file to an opencv image.
-        file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
-        opencv_image = cv2.imdecode(file_bytes, 1)
-        final_image = cv2.cvtColor(opencv_image, cv2.COLOR_BGR2RGB)
+
+        image_stream = BytesIO(uploaded_file.read())
+
+        # Open the image with PIL.Image
+        pil_image = Image.open(image_stream)
+        resized_image = pil_image.resize((200, 200))
+            
+        # Convert image to numpy array
+        image_array = np.array(resized_image)
+        st.session_state.image_array = resize_and_convert_image(image_array, (200, 200))
+
+        # file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
+        # opencv_image = cv2.imdecode(file_bytes, 1)
+        # final_image = cv2.cvtColor(opencv_image, cv2.COLOR_BGR2RGB)
         # resize to 200 x 200
         # resized_image = cv2.resize(opencv_image, (200, 200), interpolation = cv2.INTER_LINEAR)
-        resized_image = resize_and_convert_image(final_image, (200, 200))
-        st.session_state.image_array = np.array(resized_image)
-        print('this got reached!')
+        # resized_image = resize_and_convert_image(final_image, (200, 200))
+        # st.session_state.image_array = np.array(resized_image)
+        # print('this got reached!')
         # display in the center
 
         
@@ -101,12 +112,25 @@ if button_load_image: # if button clicked
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
                 }
+            
             response = requests.get(text_URL, headers=headers)
             response.raise_for_status()
             image = Image.open(BytesIO(response.content))
-            resized_image = resize_and_convert_image(image, (200, 200))
+            resized_image = image.resize((200, 200))
+            
             # Convert image to numpy array
-            st.session_state.image_array = np.array(resized_image)
+            image_array = np.array(resized_image)
+            st.session_state.image_array=resize_and_convert_image(image_array, (200, 200))
+
+            # response = requests.get(text_URL, headers=headers)
+            # response.raise_for_status()
+
+            # image_color_array = np.array(bytearray(response.content), dtype=np.uint8)
+            # img_color_BGR = cv2.imdecode(image_color_array, cv2.IMREAD_COLOR)
+            # img_color = cv2.cvtColor(img_color_BGR, cv2.COLOR_BGR2RGB)
+            # resized_image = resize_and_convert_image(img_color, (200, 200))
+            # # Convert image to numpy array
+            # st.session_state.image_array = np.array(resized_image)
             col1, col2, col3 = container_image_loader.columns(3)
             with col1:
                 st.write(' ')
@@ -133,5 +157,5 @@ if submit_button:
 
     col1, col2, col3 = st.columns([1, 3, 1])
     st.image(img_color, caption=f"Color Recommendation: {color_title}", use_container_width=True)
-    st.image(img_comp, caption=f"Color Recommendation: {color_title}", use_container_width=True)
+    st.image(img_comp, caption=f"Composition Recommendation: {comp_title}", use_container_width=True)
     st.image(img_overall, caption=f"Overall Weighted Recommendation: {overall_title}", use_container_width=True)

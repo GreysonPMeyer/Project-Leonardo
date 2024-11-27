@@ -89,14 +89,19 @@ def composition_columns(image):
         # If you only have one contour center, then kmeans no longer returns tuples
         sorted_centers = np.concatenate((contour_centers,np.array([contour_centers[0], contour_centers[0], contour_centers[0]])))
     elif 1 < len(contour_centers) < 4:
+        cv2.setRNGSeed(42)
         # hdf5files struggle to contain informatio that is not of a uniform size, so we add copies of the origin
         K = len(contour_centers)
         compactness, labels, centers = cv2.kmeans(contour_centers, K, None, criteria, 10, cv2.KMEANS_PP_CENTERS)
         sorted_centers = sorted(centers, key=lambda c: (c[1], c[0]), reverse=True)
         first_s_center = sorted_centers[0]
+        extras = []
         for _ in range(4 - len(sorted_centers)):
-            sorted_centers = np.concatenate((sorted_centers,first_s_center))
+            extras.append(first_s_center)
+        extras_array = np.array(extras)
+        sorted_centers = np.concatenate((sorted_centers,extras_array))
     else:
+        cv2.setRNGSeed(42)
         K = 4
         compactness, labels, centers = cv2.kmeans(contour_centers, K, None, criteria, 10, cv2.KMEANS_PP_CENTERS)
         sorted_centers = np.array(sorted(centers, key=lambda c: (c[1], c[0]), reverse=True))
@@ -168,6 +173,7 @@ def display_art(image:np.array, weight:float,
     }
                     
     img_color_url = df['metadata'][color_winner_idx][3].decode('utf-8')
+    print('color url! ', img_color_url)
     response = requests.get(img_color_url, headers=headers)
     image_color_array = np.array(bytearray(response.content), dtype=np.uint8)
     img_color_BGR = cv2.imdecode(image_color_array, cv2.IMREAD_COLOR)
@@ -190,7 +196,7 @@ def display_art(image:np.array, weight:float,
 # plt.imshow(img_comp)
     img_comp_url = df['metadata'][comp_winner_idx][3].decode('utf-8')
     response = requests.get(img_comp_url, headers=headers)
-    # print('urlurlurl111 ', img_comp_url)
+    print('urlurlurl111 ', img_comp_url)
     image_comp_array = np.array(bytearray(response.content), dtype=np.uint8)
     # print('ARRAY ', image_comp_array)
     img_comp_BGR = cv2.imdecode(image_comp_array, cv2.IMREAD_COLOR)
