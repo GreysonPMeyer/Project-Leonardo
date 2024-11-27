@@ -84,15 +84,12 @@ if button_load_image: # if button clicked
     if uploaded_file is not None:
         # Convert the file to an opencv image.
 
-        image_stream = BytesIO(uploaded_file.read())
-
-        # Open the image with PIL.Image
-        pil_image = Image.open(image_stream)
+        pil_image = Image.open(BytesIO(uploaded_file.read()))
+        # image_stream = BytesIO(uploaded_file.read())
+        # pil_image = Image.open(image_stream)
         resized_image = pil_image.resize((200, 200))
-            
-        # Convert image to numpy array
-        image_array = np.array(resized_image)
-        st.session_state.image_array = resize_and_convert_image(image_array, (200, 200))
+        image_array = resize_and_convert_image(np.array(resized_image), (200, 200))
+        st.session_state.image_array = image_array
 
         # file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
         # opencv_image = cv2.imdecode(file_bytes, 1)
@@ -120,11 +117,9 @@ if button_load_image: # if button clicked
             response = requests.get(text_URL, headers=headers)
             response.raise_for_status()
             image = Image.open(BytesIO(response.content))
-            resized_image = resize_and_convert_image(np.array(image), (200, 200))
-
-            # Convert image to numpy array
-            image_array = np.array(resized_image)
-            st.session_state.image_array=resize_and_convert_image(image_array, (200, 200))
+            resized_image = image.resize((200,200))
+            image_array = resize_and_convert_image(np.array(resized_image), (200, 200))
+            st.session_state.image_array=image_array
 
             # response = requests.get(text_URL, headers=headers)
             # response.raise_for_status()
@@ -176,7 +171,7 @@ if submit_button:
             st.write(' ')
         with col2:
             st.image(img_color, caption=f"Color Recommendation: {color_title}")#, use_container_width=True)
-            st.image(img_comp, caption=f"Color Recommendation: {color_title}")#, use_container_width=True)
+            st.image(img_comp, caption=f"Composition Recommendation: {comp_title}")#, use_container_width=True)
             st.image(img_overall, caption=f"Overall Weighted Recommendation: {overall_title}")#, use_container_width=True)
         with col3:
             st.write(' ')
