@@ -108,44 +108,65 @@ def composition_columns(image):
 
     return np.float64(sorted_centers)
 
-def color_similarity_df(input_image, df:pd.DataFrame):
+def color_similarity_df(input_image, art_type, df:pd.DataFrame):
     # Calculates how similar the images from the dataset are to the input image based on the values of the 
     # color clusters
 
     color_image_clusters = color_columns(input_image)
     distances = df['color_clusters'].apply(lambda row: np.linalg.norm(row - color_image_clusters,2))
-    # print('new_norm', np.min(distances))
-    # distances = df['color_clusters'].apply(lambda row: cdist(row, color_image_clusters, metric = 'euclidean').min(axis =1).mean())
-    # print('new_dist', np.min(distances))
-    color_winner_index = distances.argmin()
+    if art_type == "All":
+        color_winner_index = distances.argmin()
+    else:
+        metadata_decoded = df['metadata'].apply(lambda x: x[2].decode('utf-8'))
+        color_winner_index = distances[metadata_decoded.isin(art_type)].idxmin()
     distance_vector = np.array(distances)
-
+    print('color_winner_index', color_winner_index)
+    print("what we have for art_type (color)",df['metadata'][color_winner_index][2].decode('utf-8'))
     return color_winner_index, distance_vector
 
-def composition_similarity_df(input_image, df:pd.DataFrame):
+def composition_similarity_df(input_image, art_type, df:pd.DataFrame):
     # Calculates how similar the images from the dataset are to the input image based on the values of the 
     # composition clusters
     composition_image_clusters = composition_columns(input_image)
     distances = df['composition_clusters'].apply(lambda row: cdist(row, composition_image_clusters, metric = 'euclidean').min(axis = 1).sum()/row.shape[0])
-    # distances = df['composition_clusters'].apply(lambda row: np.linalg.norm(row - composition_image_clusters,2))
-    composition_winner_index = distances.argmin()
+    if art_type == "All":
+        composition_winner_index = distances.argmin()
+    else:
+        metadata_decoded = df['metadata'].apply(lambda x: x[2].decode('utf-8'))
+        composition_winner_index = distances[metadata_decoded.isin(art_type)].idxmin()
+    print('composition_winner_index', composition_winner_index)
+    print("what we have for art_type (composition)",df['metadata'][composition_winner_index][2].decode('utf-8'))
     distance_vector = np.array(distances)
+
 
     return composition_winner_index, distance_vector
 
-def similar_art(image, weight, data:pd.DataFrame):
+def similar_art(image, weight, art_type, data:pd.DataFrame):
     # Calculates the overall match and consolidates all of the information
-    color_match_index, color_averages = color_similarity_df(image, data)
+    color_match_index, color_averages = color_similarity_df(image, art_type, data)
     color_winning_avg = color_averages[color_match_index]
-    comp_match_index, comp_averages = composition_similarity_df(image, data)
+    comp_match_index, comp_averages = composition_similarity_df(image, art_type, data)
     comp_winning_avg = comp_averages[comp_match_index]
     overall_avgs = weight * color_averages + (1 - weight) * comp_averages
-    overall_match_index = np.argmin(overall_avgs)
-    overall_winning_avg = overall_avgs[overall_match_index]
+    if art_type == "All":
+        overall_match_index = np.argmin(overall_avgs)
+        overall_winning_avg = overall_avgs[overall_match_index]
+    else:
+        metadata_decoded = data['metadata'].apply(lambda x: x[2].decode('utf-8'))
+        valid_indices = metadata_decoded.isin(art_type)
+        # Filter overall_avgs using valid_indices
+        filtered_overall_avgs = overall_avgs[valid_indices]
+        # Find the index of the minimum value in the filtered overall_avgs
+        min_index_in_filtered = np.argmin(filtered_overall_avgs)
+        # Map this index back to the original overall_avgs
+        overall_match_index = np.where(valid_indices)[0][min_index_in_filtered]
+        overall_winning_avg = overall_avgs[overall_match_index]
+    print('overall_match_index', overall_match_index)  
+    print("what we have for art_type (overall)",data['metadata'][overall_match_index][2].decode('utf-8'))
 
     return color_match_index, color_winning_avg, comp_match_index, comp_winning_avg, overall_match_index, overall_winning_avg
 
-def display_art(image:np.array, weight:float, 
+def display_art(image:np.array, weight:float, art_type:set, 
                 data_file:str = "https://github.com/BotanCevik2/Project-Leonardo/raw/refs/heads/main/resized_images_cluster_fix_2.parquet"):
     """ Find similar art in processed parquet file and display the art.
 
@@ -160,20 +181,22 @@ def display_art(image:np.array, weight:float,
     """
     # This code will identify the color match, composition match and overall match across a collection of 
     # data chunks. I have so far only tested it with one chunk
-
+    print("Slide value: ", weight)
+    print("Art type: ", art_type)
+    
     df = pd.read_parquet(data_file, engine="auto")
     df['color_clusters'] = df['color_clusters'].apply(lambda x: np.array(ast.literal_eval(x)))
     df['composition_clusters'] = df['composition_clusters'].apply(lambda x: np.array(ast.literal_eval(x)))
     df['metadata'] = df['metadata'].apply(lambda x: np.array(ast.literal_eval(x)))
     
-    color_winner_idx,_, comp_winner_idx, _, overall_winner_idx, _ = similar_art(image, weight, df)
+    color_winner_idx,_, comp_winner_idx, _, overall_winner_idx, _ = similar_art(image, weight, art_type, df)
                     
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
     }
                     
     img_color_url = df['metadata'][color_winner_idx][3].decode('utf-8')
-    print('color url! ', img_color_url)
+    print('Color url:', img_color_url)
     response = requests.get(img_color_url, headers=headers)
     image_color_array = np.array(bytearray(response.content), dtype=np.uint8)
     img_color_BGR = cv2.imdecode(image_color_array, cv2.IMREAD_COLOR)
@@ -196,7 +219,7 @@ def display_art(image:np.array, weight:float,
 # plt.imshow(img_comp)
     img_comp_url = df['metadata'][comp_winner_idx][3].decode('utf-8')
     response = requests.get(img_comp_url, headers=headers)
-    print('urlurlurl111 ', img_comp_url)
+    print('Composition url:', img_comp_url)
     image_comp_array = np.array(bytearray(response.content), dtype=np.uint8)
     # print('ARRAY ', image_comp_array)
     img_comp_BGR = cv2.imdecode(image_comp_array, cv2.IMREAD_COLOR)
@@ -208,6 +231,7 @@ def display_art(image:np.array, weight:float,
 
     # Downloads the image from the url and makes it presentable
     img_overall_url = df['metadata'][overall_winner_idx][3].decode('utf-8')
+    print('Overall url:', img_overall_url)
     response = requests.get(img_overall_url, headers=headers)
     image_overall_array = np.array(bytearray(response.content), dtype=np.uint8)
     img_overall_BGR = cv2.imdecode(image_overall_array, cv2.IMREAD_COLOR)

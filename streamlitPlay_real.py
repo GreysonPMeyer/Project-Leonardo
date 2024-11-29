@@ -54,22 +54,56 @@ with st.form(key="my_form"):
         disabled=True,
     )
     # color / composition ratio
-    slider = col2.slider(
-        "Color/Composition",
-        min_value = 0.,
-        max_value = 1.,
-        value = 0.5, step=0.01,
-        key="slider",
-    )
+    with col2:
+        sub_col1, sub_col2 = st.columns([3, 1])  # Adjust the widths to move "Composition" more to the right
+        with sub_col1:
+            st.write("Color")
+        with sub_col2:
+            st.markdown("<div style='text-align: right;'>Composition</div>", unsafe_allow_html=True)
+        slider = st.slider(
+            "Color/Composition Ratio",
+            min_value=0.0,
+            max_value=1.0,
+            value=0.5,
+            step=0.01,
+            key="slider",
+            label_visibility="collapsed"
+        )
     # type of art
     art_type = col3.selectbox(
         "Art type",
-        options = ["Painting"],
+        options = ["All","Painting", "Calligraphy", "Graphic design", 'Posters',"Tapestry" , "Else"],
         key = "style",
     )
 
     # Submit button
     submit_button = st.form_submit_button(label="Submit")
+
+if art_type is not None:
+    if art_type == "All":
+        st.session_state.arttype = art_type
+    elif art_type == "Painting":
+        st.session_state.arttype = ['painting', 'graphics', 'drawings', 'landscape', 'genre painting', 
+                                   'abstract', 'history painting', 'cityscape', 'portrait', 
+                                  'symbolic painting', 'self-portrait', 
+                                  'animal painting', 'nude painting (nu)', 'flower painting', 
+                                  'mythological painting', 'literary painting', 
+                                  'illustration', 'religious painting', 'caricature', 
+                                  'bird and flower painting', 'still life','allegorical painting', 'glass-painted', 'manuscripts and illuminations'
+                                  ,'painted canvases','reproductions-mosaics','wildlife painting', 'enamels-painted',
+                                  'pastorale','pastels & oil sketches on paper']
+    elif art_type == "Calligraphy":
+        st.session_state.arttype = ['calligraphy', 'graffiti']
+    elif art_type == "Graphic design":
+        st.session_state.arttype = ['graphic design', 'print', 'tesselation','panorama','paper-graphics']
+    elif art_type == "Posters":
+        st.session_state.arttype = ['posters','advertisement']
+    elif art_type == "Tapestry":
+        st.session_state.arttype = ['tapestry', 'costumes-tapestries', 'woodblocks','stucco-reliefs-inscribed']
+    else:
+        st.session_state.arttype = ['sketch and study', 'wallpaper','miscellaneous-paper', 'miscellaneous-stucco','ink tablet', 'miscellaneous-papyrus',
+                                    'miscellaneous-mosaic', 'sketchbooks','works on paper-miscellaneous','miscellaneous-papyrus','drawings|miscellaneous']
+
 
 container_image_finder = st.container(border = True) # make container for the image finder
 container_image_finder.markdown("#### Proposed Similar Arts") # title
@@ -160,7 +194,7 @@ if submit_button:
         # print(url)
         # df = pd.read_parquet(url, engine="pyarrow")
         # dataset_list = ["/Users/greysonmeyer/Downloads/resized_images_chunk_modfied_105.h5"]
-        img_color, color_title, img_comp, comp_title, img_overall, overall_title = display_art(st.session_state.image_array, st.session_state.slider)
+        img_color, color_title, img_comp, comp_title, img_overall, overall_title = display_art(st.session_state.image_array, st.session_state.slider, st.session_state.arttype)
         images = [img_color, img_comp, img_overall]
         # color_image = Image.open(img_color)
         # comp_image = Image.open(img_comp)
