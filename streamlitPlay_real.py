@@ -121,8 +121,8 @@ if button_load_image: # if button clicked
         pil_image = Image.open(BytesIO(uploaded_file.read()))
         # image_stream = BytesIO(uploaded_file.read())
         # pil_image = Image.open(image_stream)
-        resized_image = pil_image.resize((200, 200))
-        image_array = resize_and_convert_image(np.array(resized_image), (200, 200))
+        # resized_image = pil_image.resize((200, 200))
+        image_array = resize_and_convert_image(np.array(pil_image), (200, 200))
         st.session_state.image_array = image_array
 
         # file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
@@ -151,8 +151,8 @@ if button_load_image: # if button clicked
             response = requests.get(text_URL, headers=headers)
             response.raise_for_status()
             image = Image.open(BytesIO(response.content))
-            resized_image = image.resize((200,200))
-            image_array = resize_and_convert_image(np.array(resized_image), (200, 200))
+            # resized_image = image.resize((200,200))
+            image_array = resize_and_convert_image(np.array(image), (200, 200))
             st.session_state.image_array=image_array
 
             # response = requests.get(text_URL, headers=headers)
