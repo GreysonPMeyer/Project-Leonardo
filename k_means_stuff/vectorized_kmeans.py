@@ -167,7 +167,7 @@ def similar_art(image, weight, art_type, data:pd.DataFrame):
     return color_match_index, color_winning_avg, comp_match_index, comp_winning_avg, overall_match_index, overall_winning_avg
 
 def display_art(image:np.array, weight:float, art_type:set, 
-                data_file:str = "https://github.com/BotanCevik2/Project-Leonardo/raw/refs/heads/main/resized_images_cluster_fix_fin.parquet"):
+                data_file:str = "https://github.com/BotanCevik2/Project-Leonardo/raw/refs/heads/main/resized_images_cluster_fix_2.parquet"):
     """ Find similar art in processed parquet file and display the art.
 
     Args:
