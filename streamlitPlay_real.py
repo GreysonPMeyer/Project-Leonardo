@@ -5,32 +5,18 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-
-import cv2
 import numpy as np
 import requests
 from PIL import Image
 from io import BytesIO
-import pandas as pd
 import requests
-import os
-import cv2
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
-import h5py
-from scipy.spatial.distance import cdist
-from scipy.optimize import linear_sum_assignment
-from k_means_stuff.vectorized_kmeans import display_art, resize_and_convert_image
-
-
-## page set up
+from k_means_stuff.vectorized_kmeans import display_art, resize_and_convert_image, load_dataset
 
 
 # project title
 st.markdown("# Project Leonardo")
 # description
 st.write("Statistically driven approach to find similar arts.")
-
 
 
 ## image loader
@@ -41,6 +27,9 @@ allowed_types = ["png", "jpg", "jpeg"] # add more image types if necessary
 uploaded_file = container_image_loader.file_uploader("Select an image...", type=allowed_types) # upload
 text_URL = container_image_loader.text_input("or input image URL", value = "https://static.streamlit.io/examples/owl.jpg") # URL input
 button_load_image = container_image_loader.button(label = "Load Image")
+
+# load data once
+omni_df = load_dataset()
 
 with st.form(key="my_form"):
      # button to load
@@ -194,7 +183,7 @@ if submit_button:
         # print(url)
         # df = pd.read_parquet(url, engine="pyarrow")
         # dataset_list = ["/Users/greysonmeyer/Downloads/resized_images_chunk_modfied_105.h5"]
-        img_color, color_title, img_comp, comp_title, img_overall, overall_title = display_art(st.session_state.image_array, st.session_state.slider, st.session_state.arttype)
+        img_color, color_title, img_comp, comp_title, img_overall, overall_title = display_art(st.session_state.image_array, st.session_state.slider, st.session_state.arttype, omni_df)
         images = [img_color, img_comp, img_overall]
         # color_image = Image.open(img_color)
         # comp_image = Image.open(img_comp)
