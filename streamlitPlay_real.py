@@ -57,9 +57,9 @@ with st.form(key="my_form"):
     with col2:
         sub_col1, sub_col2 = st.columns([3, 1])  # Adjust the widths to move "Composition" more to the right
         with sub_col1:
-            st.write("Color")
+            st.write("Composition")
         with sub_col2:
-            st.markdown("<div style='text-align: right;'>Composition</div>", unsafe_allow_html=True)
+            st.markdown("<div style='text-align: right;'>Color</div>", unsafe_allow_html=True)
         slider = st.slider(
             "Color/Composition Ratio",
             min_value=0.0,
