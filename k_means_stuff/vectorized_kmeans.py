@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from scipy.spatial.distance import cdist
 from PIL import Image
 import ast
+from scipy.optimize import linear_sum_assignment, minimize
 
 def resize_and_convert_image(image_array, target_size=(200, 200)):
     # Copy of Sun's code for consistency in resizing
