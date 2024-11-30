@@ -2,9 +2,10 @@ import pandas as pd
 import requests
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
 from scipy.spatial.distance import cdist
 from PIL import Image
-import helper_tools as ht
+import ast
 
 def resize_and_convert_image(image_array, target_size=(200, 200)):
     # Copy of Sun's code for consistency in resizing
@@ -21,7 +22,6 @@ def resize_and_convert_image(image_array, target_size=(200, 200)):
         image = image.convert('RGB')
     return np.array(image)
 
-@ht.timing
 def color_columns(img):
     cv2.setRNGSeed(42)
     # Calculates the color clusters of the image
@@ -50,7 +50,6 @@ def color_columns(img):
 
     return np.float64(centers_sorted)
 
-@ht.timing
 def composition_columns(image):
     cv2.setRNGSeed(42)
     # Calculates the composition clusters and adds them to the metadata
@@ -109,7 +108,6 @@ def composition_columns(image):
 
     return np.float64(sorted_centers)
 
-@ht.timing
 def color_similarity_df(input_image, art_type, df:pd.DataFrame):
     # Calculates how similar the images from the dataset are to the input image based on the values of the 
     # color clusters
@@ -122,11 +120,10 @@ def color_similarity_df(input_image, art_type, df:pd.DataFrame):
         metadata_decoded = df['metadata'].apply(lambda x: x[2].decode('utf-8'))
         color_winner_index = distances[metadata_decoded.isin(art_type)].idxmin()
     distance_vector = np.array(distances)
-    # print('color_winner_index', color_winner_index)
-    # print("what we have for art_type (color)",df['metadata'][color_winner_index][2].decode('utf-8'))
+    print('color_winner_index', color_winner_index)
+    print("what we have for art_type (color)",df['metadata'][color_winner_index][2].decode('utf-8'))
     return color_winner_index, distance_vector
 
-@ht.timing
 def composition_similarity_df(input_image, art_type, df:pd.DataFrame):
     # Calculates how similar the images from the dataset are to the input image based on the values of the 
     # composition clusters
@@ -137,9 +134,10 @@ def composition_similarity_df(input_image, art_type, df:pd.DataFrame):
     else:
         metadata_decoded = df['metadata'].apply(lambda x: x[2].decode('utf-8'))
         composition_winner_index = distances[metadata_decoded.isin(art_type)].idxmin()
-    # print('composition_winner_index', composition_winner_index)
-    # print("what we have for art_type (composition)",df['metadata'][composition_winner_index][2].decode('utf-8'))
+    print('composition_winner_index', composition_winner_index)
+    print("what we have for art_type (composition)",df['metadata'][composition_winner_index][2].decode('utf-8'))
     distance_vector = np.array(distances)
+
 
     return composition_winner_index, distance_vector
 
@@ -163,28 +161,34 @@ def similar_art(image, weight, art_type, data:pd.DataFrame):
         # Map this index back to the original overall_avgs
         overall_match_index = np.where(valid_indices)[0][min_index_in_filtered]
         overall_winning_avg = overall_avgs[overall_match_index]
-    # print('overall_match_index', overall_match_index)  
-    # print("what we have for art_type (overall)",data['metadata'][overall_match_index][2].decode('utf-8'))
+    print('overall_match_index', overall_match_index)  
+    print("what we have for art_type (overall)",data['metadata'][overall_match_index][2].decode('utf-8'))
 
     return color_match_index, color_winning_avg, comp_match_index, comp_winning_avg, overall_match_index, overall_winning_avg
 
-@ht.timing
-def display_art(image:np.array, weight:float, art_type:set, df:pd.DataFrame):
+def display_art(image:np.array, weight:float, art_type:set, 
+                data_file:str = "https://github.com/BotanCevik2/Project-Leonardo/raw/refs/heads/main/resized_images_cluster_fix_2.parquet"):
     """ Find similar art in processed parquet file and display the art.
 
     Args:
         image (np.array): Input image as a np.array. The input image should be preprocessed 
                           (i.e., color channels switched and resized) prior to being passed to this function.
         weight (float): The weight to be passed to `similar_art` function.
+        data_file (str): Path to the processed data stored in a parquet file.
 
     Returns:
         np.array | str: Returns all of the image matches as image objects and their titles.
     """
     # This code will identify the color match, composition match and overall match across a collection of 
     # data chunks. I have so far only tested it with one chunk
-    # print("Slide value: ", weight)
-    # print("Art type: ", art_type)
-
+    print("Slide value: ", weight)
+    print("Art type: ", art_type)
+    
+    df = pd.read_parquet(data_file, engine="auto")
+    df['color_clusters'] = df['color_clusters'].apply(lambda x: np.array(ast.literal_eval(x)))
+    df['composition_clusters'] = df['composition_clusters'].apply(lambda x: np.array(ast.literal_eval(x)))
+    df['metadata'] = df['metadata'].apply(lambda x: np.array(ast.literal_eval(x)))
+    
     color_winner_idx,_, comp_winner_idx, _, overall_winner_idx, _ = similar_art(image, weight, art_type, df)
                     
     headers = {
@@ -192,7 +196,7 @@ def display_art(image:np.array, weight:float, art_type:set, df:pd.DataFrame):
     }
                     
     img_color_url = df['metadata'][color_winner_idx][3].decode('utf-8')
-    # print('Color url:', img_color_url)
+    print('Color url:', img_color_url)
     response = requests.get(img_color_url, headers=headers)
     image_color_array = np.array(bytearray(response.content), dtype=np.uint8)
     img_color_BGR = cv2.imdecode(image_color_array, cv2.IMREAD_COLOR)
@@ -215,7 +219,7 @@ def display_art(image:np.array, weight:float, art_type:set, df:pd.DataFrame):
 # plt.imshow(img_comp)
     img_comp_url = df['metadata'][comp_winner_idx][3].decode('utf-8')
     response = requests.get(img_comp_url, headers=headers)
-    # print('Composition url:', img_comp_url)
+    print('Composition url:', img_comp_url)
     image_comp_array = np.array(bytearray(response.content), dtype=np.uint8)
     # print('ARRAY ', image_comp_array)
     img_comp_BGR = cv2.imdecode(image_comp_array, cv2.IMREAD_COLOR)
@@ -227,7 +231,7 @@ def display_art(image:np.array, weight:float, art_type:set, df:pd.DataFrame):
 
     # Downloads the image from the url and makes it presentable
     img_overall_url = df['metadata'][overall_winner_idx][3].decode('utf-8')
-    # print('Overall url:', img_overall_url)
+    print('Overall url:', img_overall_url)
     response = requests.get(img_overall_url, headers=headers)
     image_overall_array = np.array(bytearray(response.content), dtype=np.uint8)
     img_overall_BGR = cv2.imdecode(image_overall_array, cv2.IMREAD_COLOR)
@@ -237,25 +241,25 @@ def display_art(image:np.array, weight:float, art_type:set, df:pd.DataFrame):
     overall_title = str(df['metadata'][overall_winner_idx][1].decode('utf-8')) + ' by ' + str(df['metadata'][overall_winner_idx][0].decode('utf-8'))
 
     # Plot the results
-    # fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
 
-    # axes[0].imshow(img_color)
-    # axes[0].set_title(color_title)
-    # axes[0].axis('off')
+    axes[0].imshow(img_color)
+    axes[0].set_title(color_title)
+    axes[0].axis('off')
 
-    # axes[1].imshow(img_comp)
-    # axes[1].set_title(comp_title)
-    # axes[1].axis('off')
+    axes[1].imshow(img_comp)
+    axes[1].set_title(comp_title)
+    axes[1].axis('off')
 
-    # axes[2].imshow(img_overall)
-    # axes[2].set_title(overall_title)
-    # axes[2].axis('off')
+    axes[2].imshow(img_overall)
+    axes[2].set_title(overall_title)
+    axes[2].axis('off')
 
-    # plt.subplots_adjust(wspace=0.4)
+    plt.subplots_adjust(wspace=0.4)
 
-    # # Show the plot
-    # plt.tight_layout()
-    # plt.show()
+    # Show the plot
+    plt.tight_layout()
+    plt.show()
     
     return img_color, color_title, img_comp, comp_title, img_overall, overall_title
 
@@ -266,22 +270,10 @@ if __name__ == "__main__":
     test_image_conv = cv2.cvtColor(test_image, cv2.COLOR_BGR2RGB)
     input_img = resize_and_convert_image(test_image_conv, (200, 200))
 
-    data_file:str = "https://github.com/BotanCevik2/Project-Leonardo/raw/refs/heads/main/resized_images_cluster_fix_fin.parquet"
-    df = pd.read_parquet(data_file, engine="auto")
-
     from time import time
-    # ts = time()
-    for _ in range(10):
-        ts = time()
-        # df = pd.read_parquet(data_file, engine="auto")
-        # test1 = df['color_clusters'].str.replace('[', '').str.replace(']', '').str.replace(',','').apply(lambda row: np.fromstring(row, sep = ' ').reshape((4,3)))
-        # t2 = time()
-        # print(f'String Parsing: {round(t2-ts, 3)} sec')
+    ts = time()
 
-        # test2 = df['color_clusters'].apply(lambda x: np.array(ast.literal_eval(x)))
-        # t3 = time()
-        # print(f'AST Parsing: {round(t3-t2, 3)} sec')
-        load_dataset()
-        
-        te = time()
-        print(f'{round(te-ts, 3)} sec')
+    display_art(input_img, 0.5)
+
+    te = time()
+    print(f'{round(te-ts, 2)} sec')
