@@ -4,9 +4,7 @@ import cv2
 import numpy as np
 from scipy.spatial.distance import cdist
 from PIL import Image
-import ast
 import helper_tools as ht
-import streamlit as st
 
 def resize_and_convert_image(image_array, target_size=(200, 200)):
     # Copy of Sun's code for consistency in resizing
@@ -169,16 +167,6 @@ def similar_art(image, weight, art_type, data:pd.DataFrame):
     # print("what we have for art_type (overall)",data['metadata'][overall_match_index][2].decode('utf-8'))
 
     return color_match_index, color_winning_avg, comp_match_index, comp_winning_avg, overall_match_index, overall_winning_avg
-
-@st.cache_data(persist=True)
-def load_dataset(data_file:str = "https://github.com/BotanCevik2/Project-Leonardo/raw/refs/heads/main/resized_images_cluster_fix_2.parquet"):
-    df = pd.read_parquet(data_file, engine="auto")
-    # df['color_clusters'] = df['color_clusters'].apply(lambda x: np.array(ast.literal_eval(x)))
-    # df['composition_clusters'] = df['composition_clusters'].apply(lambda x: np.array(ast.literal_eval(x)))
-    df['metadata'] = df['metadata'].apply(lambda x: np.array(ast.literal_eval(x)))
-    df['color_clusters'] = df['color_clusters'].str.replace('[', '').str.replace(']', '').str.replace(',','').apply(lambda row: np.fromstring(row, sep = ' ').reshape((4,3)))
-    df['composition_clusters'] = df['composition_clusters'].str.replace('[', '').str.replace(']', '').str.replace(',','').apply(lambda row: np.fromstring(row, sep = ' ').reshape((4,2)))
-    return df
 
 @ht.timing
 def display_art(image:np.array, weight:float, art_type:set, df:pd.DataFrame):

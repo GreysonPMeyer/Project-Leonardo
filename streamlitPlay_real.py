@@ -11,7 +11,18 @@ from PIL import Image
 from io import BytesIO
 import requests
 from k_means_stuff.vectorized_kmeans import display_art, resize_and_convert_image, load_dataset
+import ast
+import pandas as pd
 
+@st.cache_data(persist=True)
+def load_dataset(data_file:str = "https://github.com/BotanCevik2/Project-Leonardo/raw/refs/heads/main/resized_images_cluster_fix_fin.parquet"):
+    df = pd.read_parquet(data_file, engine="auto")
+    # df['color_clusters'] = df['color_clusters'].apply(lambda x: np.array(ast.literal_eval(x)))
+    # df['composition_clusters'] = df['composition_clusters'].apply(lambda x: np.array(ast.literal_eval(x)))
+    df['metadata'] = df['metadata'].apply(lambda x: np.array(ast.literal_eval(x)))
+    df['color_clusters'] = df['color_clusters'].str.replace('[', '').str.replace(']', '').str.replace(',','').apply(lambda row: np.fromstring(row, sep = ' ').reshape((4,3)))
+    df['composition_clusters'] = df['composition_clusters'].str.replace('[', '').str.replace(']', '').str.replace(',','').apply(lambda row: np.fromstring(row, sep = ' ').reshape((4,2)))
+    return df
 
 # project title
 st.markdown("# Project Leonardo")
