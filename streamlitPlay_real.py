@@ -10,7 +10,7 @@ import requests
 from PIL import Image
 from io import BytesIO
 import requests
-from k_means_stuff.vectorized_kmeans import display_art, resize_and_convert_image, load_dataset
+from k_means_stuff.vectorized_kmeans import display_art, resize_and_convert_image
 import ast
 import pandas as pd
 
