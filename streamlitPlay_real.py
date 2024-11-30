@@ -29,7 +29,7 @@ from k_means_stuff.vectorized_kmeans import display_art, resize_and_convert_imag
 # project title
 st.markdown("# Project Leonardo")
 # description
-st.write("Using ML to find similar arts.")
+st.write("Statistically driven approach to find similar arts.")
 
 
 
