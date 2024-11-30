@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import h5py
 from scipy.spatial.distance import cdist
-from scipy.optimize import linear_sum_assignment
+from scipy.optimize import linear_sum_assignment, minimize
 from k_means_stuff.vectorized_kmeans_v2 import display_art, resize_and_convert_image
 
 
