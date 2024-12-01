@@ -10,7 +10,7 @@ Welcome to the Project-Leonardo! This tool helps users find similar art pieces b
 
 
 ## About <a name="about"></a>
-This project utilizes image processing and machine learning techniques to match input artwork with similar pieces based on various parameters such as:
+This project utilizes image processing and statistical techniques to match input artwork with similar pieces based on various parameters such as:
 * Art type 
 * Color palette
 * Composition
