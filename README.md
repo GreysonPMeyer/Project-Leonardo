@@ -25,7 +25,7 @@ The system extracts key features and provides a list of similar art pieces from 
 - **Scalable Database:** Capable of searching through a large number of art pieces.
 
 ## App <a name="app"></a>
-You can access the [Project-Leonardo](https://project-leonardo-jypfzgvu8hchvksbwou6h9.streamlit.app/)  in your browser.
+You can access the [Project-Leonardo](https://project-leonardo-wna6tfncgzxmvdwlzcblua.streamlit.app/)  in your browser.
 
 ## Usage <a name="usage"></a>
 Here is the usage process of the App:
