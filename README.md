@@ -34,6 +34,11 @@ Here is the usage process of the App:
 3. Get results: The system will analyze the image and provide a list of similar artworks.
 4. Explore results: Browse through the similar art pieces, view their details, and discover new artworks.
 
+## My Contributions
+* Cleaned the dataset of entries with broken URLs
+* Implemented the initial k-means algorithm
+* Devised the similarity scores
+
 
 ## License <a name="license"></a>
 This project is licensed under the MIT License - see the [LICENSE](https://github.com/BotanCevik2/Project-Leonardo/blob/main/LICENSE) file for details.
