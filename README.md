@@ -37,7 +37,8 @@ Here is the usage process of the App:
 ## My Contributions
 * Cleaned the dataset of entries with broken URLs
 * Implemented the initial k-means algorithm
-* Devised the similarity scores
+* Devised the similarity metrics
+* Created a working version of the streamlit app
 
 
 ## License <a name="license"></a>
